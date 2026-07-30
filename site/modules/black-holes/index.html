@@ -111,18 +111,96 @@ const quad = new THREE.Mesh(new THREE.PlaneGeometry(2,2), new THREE.ShaderMateri
                  mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),
                      mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);
     }
-    /* Procedural sky: faint nebulosity plus point stars. Lensing is only legible
-       against a background with structure in it. */
+    float fbm(vec3 p){
+      float a=0.5, s=0.0;
+      for(int i=0;i<4;i++){ s+=a*noise(p); p*=2.07; a*=0.5; }
+      return s;
+    }
+    /* ── Procedural sky ──────────────────────────────────────────────────────
+       Lensing is only legible against a background with structure in it, so this
+       is a real starfield rather than a wash.
+
+       Stars sit at a jittered point inside a lattice cell and are drawn by angular
+       distance from that point, which makes them round. The cheap alternative —
+       light the whole cell when its hash clears a threshold — draws every star as
+       a cube-shaped patch, and at this bloom threshold each patch then blooms into
+       a blob. That is what this replaced.
+
+       Brightness is budgeted against the bloom threshold (0.30): only the top of
+       the sparse layer is allowed to flare. A whole field above the threshold
+       blooms together and turns to porridge. */
+    vec3 starColour(float t){
+      /* Real fields are mostly white, with blue-white and amber at the ends. */
+      vec3 warm  = vec3(1.00,0.78,0.56);
+      vec3 white = vec3(1.00,0.97,0.93);
+      vec3 blue  = vec3(0.74,0.83,1.00);
+      return t<0.5 ? mix(warm,white,smoothstep(0.0,0.5,t))
+                   : mix(white,blue,smoothstep(0.5,1.0,t));
+    }
+    /* One star per cell. rad is its angular size, in cell widths. */
+    vec2 faintStars(vec3 d, float dens, float cut, float rad){
+      vec3 c = floor(d*dens)+0.5;
+      float s = hash(c);
+      if(s < cut) return vec2(0.0);
+      vec3 jt = vec3(hash(c+11.3),hash(c+23.7),hash(c+37.1))-0.5;
+      vec3 sd = normalize(c + jt*0.45);
+      float a2 = 2.0*(1.0-clamp(dot(d,sd),-1.0,1.0));      // ≈ angle² when small
+      float rr = rad/dens; rr *= rr;
+      float m  = (s-cut)/(1.0-cut);
+      return vec2(exp(-a2/rr)*(0.35+0.65*m*m), hash(c+53.9));
+    }
+    /* The bright ones are searched across the 2×2×2 cells around the sample point,
+       so a star sitting near a cell wall is still found from the neighbouring cell
+       and comes out whole instead of sliced. The faint layers do not bother — a
+       clipped one-pixel dot is not visible, and eight times the hashing for it is
+       not worth paying for. */
+    vec2 brightStars(vec3 d, float dens, float cut, float rad){
+      vec3 b = floor(d*dens - 0.5);
+      vec2 best = vec2(0.0);
+      float rr = rad/dens; rr *= rr;
+      for(int i=0;i<2;i++) for(int j=0;j<2;j++) for(int k=0;k<2;k++){
+        vec3 c = b + vec3(float(i),float(j),float(k)) + 0.5;
+        float s = hash(c);
+        if(s < cut) continue;
+        /* Jitter and halo width are both budgeted against the half-cell the 2×2×2
+           window can actually guarantee: offset ≤0.15 cells, halo out to ≈0.32.
+           Let the glow grow past that and the star gets clipped into a polygon by
+           whichever cells happen to be in the window. */
+        vec3 jt = vec3(hash(c+11.3),hash(c+23.7),hash(c+37.1))-0.5;
+        vec3 sd = normalize(c + jt*0.30);
+        float a2 = 2.0*(1.0-clamp(dot(d,sd),-1.0,1.0));
+        float m  = (s-cut)/(1.0-cut);
+        float v  = (exp(-a2/rr) + 0.15*exp(-a2/(4.0*rr)))*(0.30+0.70*m*m);
+        /* Hard guarantee against the polygon edges: the window can only promise
+           stars within 0.35 cells of the sample, so take the glow to exactly zero
+           before that instead of trusting the falloff to have got small enough. */
+        v *= 1.0 - smoothstep(0.20, 0.33, sqrt(a2)*dens);
+        if(v > best.x) best = vec2(v, hash(c+53.9));
+      }
+      return best;
+    }
     vec3 sky(vec3 d){
-      float n1=noise(d*3.0), n2=noise(d*7.0+13.0), n3=noise(d*17.0-5.0);
-      vec3 neb = mix(vec3(0.020,0.024,0.045), vec3(0.10,0.055,0.085), smoothstep(0.45,0.95,n1));
-      neb += vec3(0.055,0.030,0.015)*smoothstep(0.55,1.0,n2);
-      neb += vec3(0.010,0.030,0.055)*smoothstep(0.60,1.0,n3);
-      vec3 g=floor(d*220.0);
-      float s=hash(g);
-      float star = s>0.9975 ? pow((s-0.9975)/0.0025,1.5) : 0.0;
-      vec3 tint = mix(vec3(1.0,0.85,0.65), vec3(0.75,0.85,1.0), hash(g+7.0));
-      return neb + tint*star*2.4;
+      /* A galactic band gives the sky somewhere to be dense. That reads as depth,
+         and it makes the lensed distortion far easier to follow as it sweeps. */
+      float bd   = dot(d, normalize(vec3(0.31,0.90,-0.31)));
+      float band = exp(-bd*bd/0.052);
+
+      vec3 neb  = vec3(0.011,0.013,0.022);                                  // floor
+      neb += vec3(0.050,0.047,0.056)*band*(0.35+0.85*fbm(d*3.1));           // the band
+      neb += vec3(0.028,0.015,0.011)*smoothstep(0.55,1.0,fbm(d*5.3+13.0));  // warm cloud
+      neb += vec3(0.007,0.018,0.033)*smoothstep(0.58,1.0,fbm(d*8.1-5.0));   // cool cloud
+      /* Dark lanes cutting the band, the way real dust does. */
+      neb *= 1.0 - 0.55*band*smoothstep(0.46,0.86,fbm(d*6.7+31.0));
+
+      /* Sizes descend with brightness, as they appear to on a real sky. Only the
+         top of layer A is meant to clear the bloom threshold. */
+      vec2 A = brightStars(d,  64.0, 0.9930, 0.16);
+      vec2 B = faintStars (d, 150.0, 0.9760, 0.20);
+      vec2 C = faintStars (d, 260.0, 0.9520, 0.19);
+      return neb
+           + starColour(A.y)*A.x*0.60
+           + starColour(B.y)*B.x*0.24
+           + starColour(C.y)*C.x*0.11*(0.45+1.25*band);
     }
     /* Accretion disk: temperature rises inward as r^-3/4 (Shakura–Sunyaev). */
     vec3 diskColour(float r, float phi){
