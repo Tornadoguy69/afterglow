@@ -1,0 +1,34 @@
+{
+  "id": "big-bang",
+  "title": "The Big Bang",
+  "blurb": "Sixty decades of time on one slider, from the Planck era to now — and a shaded region marking exactly where the evidence runs out.",
+  "tier": "established",
+  "entry": "index.html",
+  "sources": [
+    {
+      "claim": "CMB discovery",
+      "cite": "Penzias & Wilson 1965, ApJ 142, 419"
+    },
+    {
+      "claim": "T0 = 2.72548 K",
+      "cite": "Fixsen 2009, ApJ 707, 916"
+    },
+    {
+      "claim": "Recombination and cosmological parameters",
+      "cite": "Planck Collaboration VI 2020, A&A 641, A6"
+    },
+    {
+      "claim": "Primordial nucleosynthesis",
+      "cite": "Cyburt et al. 2016, Rev. Mod. Phys. 88, 015004"
+    },
+    {
+      "claim": "Inflation",
+      "cite": "Guth 1981, PRD 23, 347; Linde 1982, Phys. Lett. B 108, 389"
+    }
+  ],
+  "open": [
+    "Epoch times and temperatures are interpolated log-log between published markers rather than integrated from the Friedmann equations.",
+    "Everything before ~1e-12 s is extrapolation beyond collider-tested energies. The module labels this explicitly.",
+    "Inflation is shown because it is standard, but it is inferred, not confirmed."
+  ]
+}

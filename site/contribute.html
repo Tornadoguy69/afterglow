@@ -1,0 +1,344 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contribute — Afterglow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="engine/style.css">
+<style>
+  body{overflow-y:auto}
+  .wrap{max-width:1060px;margin:0 auto;padding:34px 28px 90px}
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:44px}
+  .topbar h1{font-family:var(--serif);font-size:clamp(26px,3.4vw,38px);font-weight:400;
+    letter-spacing:-.018em;margin:0}
+  .topbar .tools{margin-left:auto;display:flex;gap:8px}
+  .lede{font-family:var(--serif);font-size:17px;line-height:1.62;color:var(--ink-2);
+    max-width:64ch;margin:0 0 12px}
+  h2{font-family:var(--sans);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-4);font-weight:600;margin:46px 0 8px}
+  h2:first-of-type{margin-top:38px}
+  .sub{font-family:var(--serif);font-size:14px;color:var(--ink-3);margin:0 0 20px;max-width:64ch}
+
+  /* interactive anatomy */
+  .anatomy{display:grid;grid-template-columns:minmax(230px,280px) 1fr;gap:16px;align-items:start}
+  @media(max-width:760px){.anatomy{grid-template-columns:1fr}}
+  .tree{border:1px solid var(--line-2);border-radius:12px;background:var(--paper-2);padding:12px;
+    font-family:var(--mono);font-size:12.5px}
+  .tree button{
+    display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;
+    font:inherit;color:var(--ink-2);padding:7px 10px;border-radius:7px;
+    transition:background .14s var(--ease),color .14s var(--ease);
+  }
+  .tree button:hover{background:var(--paper-3);color:var(--ink)}
+  .tree button[aria-selected="true"]{background:var(--clay);color:#FCFBF8}
+  .tree .indent{padding-left:20px}
+  .tree .dim{color:var(--ink-4);padding:7px 10px;user-select:none}
+  .detail{border:1px solid var(--line-2);border-radius:12px;background:var(--paper-2);padding:20px 22px;min-height:260px}
+  .detail h3{font-family:var(--serif);font-size:20px;font-weight:400;margin:0 0 8px}
+  .detail p{font-family:var(--serif);font-size:14px;line-height:1.62;color:var(--ink-2);margin:0 0 12px}
+  .detail .req{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:10px;
+    font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:3px 9px;border-radius:99px;
+    border:1px solid var(--line-2);color:var(--ink-3);margin-bottom:12px}
+
+  pre{background:var(--paper-3);border:1px solid var(--line-2);border-radius:10px;
+    padding:16px 18px;overflow-x:auto;margin:0;font-family:var(--mono);font-size:12px;
+    line-height:1.65;color:var(--ink-2)}
+  .codewrap{position:relative}
+  .copy{position:absolute;top:10px;right:10px;font-family:var(--sans);font-size:11px;
+    background:var(--paper);border:1px solid var(--line-2);border-radius:7px;padding:6px 11px;
+    cursor:pointer;color:var(--ink-3);transition:.14s}
+  .copy:hover{background:var(--paper-2);color:var(--ink)}
+  .copy.done{background:var(--sage);color:#fff;border-color:var(--sage)}
+
+  /* checklist */
+  .check{border:1px solid var(--line-2);border-radius:12px;background:var(--paper-2);padding:6px 8px}
+  .check label{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;cursor:pointer;
+    border-radius:9px;transition:background .14s var(--ease)}
+  .check label:hover{background:var(--paper-3)}
+  .check input{margin-top:3px;accent-color:var(--clay);width:15px;height:15px;flex:none;cursor:pointer}
+  .check b{display:block;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink);margin-bottom:3px}
+  .check span{font-family:var(--serif);font-size:13px;line-height:1.55;color:var(--ink-3)}
+  .check label.ok b{color:var(--sage)}
+  .progress{display:flex;align-items:center;gap:12px;margin-top:16px;font-family:var(--mono);
+    font-size:12px;color:var(--ink-3)}
+  .bar{flex:1;height:4px;background:var(--paper-3);border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--clay);transition:width .3s var(--ease)}
+  .verdict{font-family:var(--serif);font-size:15px;margin-top:14px;color:var(--ink-2)}
+  .verdict.ready{color:var(--sage)}
+
+  .cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+  .rej{border:1px solid var(--line-2);border-left:3px solid var(--rust);border-radius:10px;
+    background:var(--paper-2);padding:16px 18px}
+  .rej b{display:block;font-family:var(--sans);font-size:13px;margin-bottom:5px;color:var(--ink)}
+  .rej span{font-family:var(--serif);font-size:13px;line-height:1.55;color:var(--ink-3)}
+  footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:11px;color:var(--ink-4);line-height:1.8}
+  footer a{color:var(--ink-3)}
+</style>
+
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="index.html">← All topics</a>
+    <h1>Add a topic</h1>
+    <div class="tools" id="tools"></div>
+  </div>
+
+  <p class="lede">One topic is one folder. The engine already handles the renderer, bloom,
+     camera, smooth zoom, resizing, the draggable inspector, panel widgets, the plotter,
+     theming and tooltips — you supply physics, a scene, a plot and captions.</p>
+  <p class="lede">Nothing here is boilerplate you have to memorise. Click through the anatomy
+     below, copy the starter, and check your work against the list at the bottom.</p>
+
+  <h2>Anatomy of a module</h2>
+  <p class="sub">Click any file.</p>
+  <div class="anatomy">
+    <div class="tree" id="tree" role="tablist" aria-label="Module files"></div>
+    <div class="detail" id="detail" role="tabpanel"></div>
+  </div>
+
+  <h2>Starter</h2>
+  <p class="sub">A complete, working module in forty lines. Copy it into
+     <code>modules/your-topic/index.html</code> and start replacing.</p>
+  <div class="codewrap">
+    <button class="copy" id="copyBtn">Copy</button>
+    <pre id="starter"></pre>
+  </div>
+
+  <h2>What gets a module rejected</h2>
+  <p class="sub">All four of these are real mistakes made while building this site, caught in review.</p>
+  <div class="cards">
+    <div class="rej"><b>A number with no source</b><span>If a quantitative claim appears on
+      screen, its origin appears in <code>meta.json</code>. No exceptions.</span></div>
+    <div class="rej"><b>A relation used out of range</b><span>The white-dwarf mass relation is
+      calibrated above 0.83 M☉. Applied to a 0.2 M☉ star it returned a remnant heavier than the
+      star it came from.</span></div>
+    <div class="rej"><b>An approximation sold as exact</b><span>The textbook stellar lifetime
+      shortcut is wrong by 4× for massive stars. Use real models or say plainly that it is a
+      first-order estimate.</span></div>
+    <div class="rej"><b>Physics tuned to look good</b><span>Tune the rendering freely — exposure,
+      bloom, point size, colour scales. Never tune the equations.</span></div>
+  </div>
+
+  <h2>Before you open a pull request</h2>
+  <p class="sub">Tick these off. The bar is the same one every existing module was held to.</p>
+  <div class="check" id="check"></div>
+  <div class="progress"><span id="count">0 / 8</span><span class="bar"><i id="barfill"></i></span></div>
+  <div class="verdict" id="verdict">Work through the list and this will tell you when you are ready.</div>
+
+  <footer>
+    Built with <a href="https://threejs.org">three.js</a>. Run locally with
+    <code>node serve.mjs</code> — a server is required, because ES modules and
+    <code>fetch</code> do not work from <code>file://</code>.<br>
+    Keyboard, anywhere on the site: <code>D</code> theme · <code>P</code> panel ·
+    <code>I</code> inspector · <code>R</code> reset the camera.
+  </footer>
+</div>
+
+<script type="module">
+import { initTheme, mountToggle } from './engine/theme.js';
+initTheme();
+mountToggle(document.getElementById('tools'));
+
+/* ─────────────────────────── interactive anatomy ─────────────────────────── */
+const FILES = [
+  {id:'folder', name:'modules/your-topic/', kind:'dim'},
+  {id:'index',  name:'index.html', indent:true, req:'required',
+   title:'index.html',
+   body:'The whole module. Markup for the shell, then one ES module script that imports the '+
+        'engine. There is no build step and no bundler — what you write is what runs.',
+   code:"import { THREE, boot, ui, Plot, PAL, el, fmt, sci }\n  from '../../engine/engine.js';"},
+  {id:'meta',   name:'meta.json', indent:true, req:'required',
+   title:'meta.json',
+   body:'Title, blurb, confidence tier, a citation for every quantitative claim, and an "open" '+
+        'array naming what your model does not do. The open array is not optional — stating a '+
+        'model\'s limits is part of publishing it.',
+   code:'{\n  "id": "your-topic",\n  "tier": "established",\n  "sources": [\n    { "claim": "...", "cite": "Author YEAR, Journal vol, page" }\n  ],\n  "open": [ "What this does not model." ]\n}'},
+  {id:'physics',name:'— physics functions', indent:true, req:'in index.html',
+   title:'Physics, as plain functions',
+   body:'Keep the equations separate from the rendering. Plain functions of numbers stay '+
+        'readable, stay checkable, and can be verified against a paper without launching a browser.',
+   code:"/* Piecewise mass–luminosity (Duric 2004) */\nfunction luminosity(M){\n  if(M < 0.43) return 0.23*Math.pow(M,2.3);\n  if(M < 2)    return Math.pow(M,4);\n  return 1.4*Math.pow(M,3.5);\n}"},
+  {id:'scene',  name:'— the 3D scene', indent:true, req:'in index.html',
+   title:'The scene',
+   body:'boot() returns a ready scene and camera with bloom, filmic tone mapping, smooth zoom '+
+        'and resize already wired. Add geometry to app.scene and animate in app.onFrame.',
+   code:"const app = boot({\n  cameraPos:new THREE.Vector3(0,40,120),\n  target:new THREE.Vector3(0,0,0),\n  dist:[10,900]\n});\napp.scene.add(yourMesh);\napp.onFrame(dt => { yourMesh.rotation.y += dt*0.2; });"},
+  {id:'plot',   name:'— the 2D plot', indent:true, req:'strongly encouraged',
+   title:'The plot',
+   body:'The scene shows what it looks like; the plot shows what it means. Most of the real '+
+        'arguments on this site are carried by the plot, not the geometry. Use PAL for colour so '+
+        'it follows the theme.',
+   code:"const p = Plot({xmin:0,xmax:80,ymin:0,ymax:300});\np.frame('ROTATION CURVE','r [kpc]','v [km/s]',[0,40,80],[0,150,300]);\np.line(points, PAL.clay, 2.2);\np.marker(x, y, PAL.ink, 4);"},
+  {id:'panel',  name:'— the panel', indent:true, req:'in index.html',
+   title:'The panel',
+   body:'Sections, sliders, toggles, buttons and readouts, all themed. Sliders take log:true when '+
+        'a quantity spans decades. Readout rows take a tip for a plain-English explanation on hover.',
+   code:"app.setPanel(el('div', null, ''));\nui.slider({label:'Mass', min:0.05, max:60, log:true,\n  value:1, unit:'M☉', on:v=>{ P.M=v; update(); }});\nui.readout([{id:'r', k:'radius', tip:'Relative to the Sun.'}]);"},
+  {id:'reg',    name:'— register in index.html', indent:true, req:'required',
+   title:'Add it to the gallery',
+   body:'One card in the site index, under the heading that matches your tier: settled physics, '+
+        'open questions, or not currently testable. The badge is the point of the whole site — '+
+        'put your module under the honest one, not the flattering one.',
+   code:'<a class="card" href="modules/your-topic/index.html">\n  <h3>Your Topic</h3>\n  <p>One sentence on what the reader will see happen.</p>\n  <div class="foot">\n    <span class="tier tier-established">Established</span>\n    <span class="go">Open →</span>\n  </div>\n</a>'}
+];
+
+const tree=document.getElementById('tree'), detail=document.getElementById('detail');
+FILES.forEach(f=>{
+  if(f.kind==='dim'){ const d=document.createElement('div'); d.className='dim'; d.textContent=f.name; tree.appendChild(d); return; }
+  const b=document.createElement('button');
+  b.type='button'; b.textContent=f.name; b.setAttribute('role','tab');
+  if(f.indent) b.classList.add('indent');
+  b.addEventListener('click',()=>select(f.id));
+  b.dataset.id=f.id;
+  tree.appendChild(b);
+});
+function select(id){
+  const f=FILES.find(x=>x.id===id);
+  tree.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected', b.dataset.id===id));
+  detail.innerHTML='';
+  const req=document.createElement('span'); req.className='req'; req.textContent=f.req;
+  const h=document.createElement('h3'); h.textContent=f.title;
+  const p=document.createElement('p'); p.textContent=f.body;
+  const pre=document.createElement('pre'); pre.textContent=f.code;
+  detail.append(req,h,p,pre);
+}
+select('index');
+
+/* ─────────────────────────── starter template ─────────────────────────── */
+const STARTER = `<meta charset="utf-8">
+<title>Your Topic — Afterglow</title>
+<link rel="stylesheet" href="../../engine/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+<\/script>
+
+<div id="app">
+  <header><div class="brand">
+    <a class="back" href="../../index.html">← All topics</a>
+    <h1>Your Topic</h1>
+    <span class="tier tier-established">Established</span>
+  </div></header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">Your plot</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset">⤢</button>
+          <button class="ib" id="insMin">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt } from '../../engine/engine.js';
+
+// 1. physics — plain functions, checkable without a browser
+const someQuantity = x => Math.sqrt(x);
+
+// 2. the shell
+const app = boot({ cameraPos:new THREE.Vector3(0,40,120), dist:[10,900] });
+
+// 3. a scene
+const mesh = new THREE.Mesh(
+  new THREE.SphereGeometry(10,32,24),
+  new THREE.MeshBasicMaterial({color:0xD97757, wireframe:true}));
+app.scene.add(mesh);
+
+// 4. a panel
+const P = { x: 4 };
+const ro = ui.readout([{ id:'q', k:'quantity', tip:'What this means.' }]);
+
+const panel = el('div');
+panel.appendChild(ui.section('Controls',
+  ui.slider({ label:'x', min:0.1, max:100, log:true, value:P.x,
+              on: v => { P.x = v; update(); } }).node,
+  ui.note('Say why this parameter matters.')));
+panel.appendChild(ui.section('Readout', ro.node));
+panel.appendChild(ui.section('Sources',
+  ui.ref('<b>Claim:</b> Author YEAR, Journal vol, page')));
+app.setPanel(panel);
+
+// 5. draw
+function update(){
+  ro.set('q', fmt(someQuantity(P.x), 3));
+  mesh.scale.setScalar(someQuantity(P.x));
+  const p = Plot({ xmin:0, xmax:100, ymin:0, ymax:10 });
+  p.frame('YOUR PLOT','x','√x',[0,50,100],[0,5,10]);
+  const pts=[]; for(let x=0;x<=100;x+=1) pts.push([x, someQuantity(x)]);
+  p.line(pts, PAL.clay, 2.2);
+  p.marker(P.x, someQuantity(P.x), PAL.ink, 4);
+  app.setCaption('<b>Say the point here.</b> One or two sentences.');
+}
+app.onThemeChange(update);
+update();
+<\/script>`;
+document.getElementById('starter').textContent = STARTER;
+
+const copyBtn=document.getElementById('copyBtn');
+copyBtn.addEventListener('click', async ()=>{
+  try{
+    await navigator.clipboard.writeText(STARTER);
+    copyBtn.textContent='Copied'; copyBtn.classList.add('done');
+  }catch(_){
+    const r=document.createRange(); r.selectNode(document.getElementById('starter'));
+    getSelection().removeAllRanges(); getSelection().addRange(r);
+    copyBtn.textContent='Select all + ⌘C';
+  }
+  setTimeout(()=>{ copyBtn.textContent='Copy'; copyBtn.classList.remove('done'); }, 2200);
+});
+
+/* ─────────────────────────── readiness checklist ─────────────────────────── */
+const CHECKS = [
+  ['Every number on screen has a citation in meta.json',
+   'If a reader could ask "says who?", the answer is in the metadata.'],
+  ['The tier is the honest one, not the flattering one',
+   'Established, active or speculative. A speculative page dressed as established damages every other page on the site.'],
+  ['meta.json has an "open" array',
+   'Name what your model does not do. Every existing module does.'],
+  ['Physics lives in plain functions, separate from rendering',
+   'So the equations can be checked against the paper without launching a browser.'],
+  ['Every relation is used inside its stated validity range',
+   'Check the endpoints. This is where the real bugs hide.'],
+  ['The plot carries the argument, not just the geometry',
+   'A pretty scene with no quantitative claim is a screensaver.'],
+  ['Colours come from PAL, so the module works in both themes',
+   'Call app.onThemeChange(update) and the plot repaints itself.'],
+  ['You checked the extremes, not just the default',
+   'Push every slider to both ends. Most bugs found on this site were found that way.']
+];
+const check=document.getElementById('check');
+CHECKS.forEach(([title,note],i)=>{
+  const l=document.createElement('label');
+  const inp=document.createElement('input'); inp.type='checkbox';
+  const wrap=document.createElement('div');
+  const b=document.createElement('b'); b.textContent=title;
+  const s=document.createElement('span'); s.textContent=note;
+  wrap.append(b,s); l.append(inp,wrap);
+  inp.addEventListener('change',()=>{ l.classList.toggle('ok',inp.checked); tally(); });
+  check.appendChild(l);
+});
+function tally(){
+  const boxes=[...check.querySelectorAll('input')];
+  const n=boxes.filter(b=>b.checked).length;
+  document.getElementById('count').textContent=n+' / '+boxes.length;
+  document.getElementById('barfill').style.width=(100*n/boxes.length)+'%';
+  const v=document.getElementById('verdict');
+  v.classList.toggle('ready', n===boxes.length);
+  v.textContent = n===boxes.length
+    ? 'Ready. Open the pull request — and say in the description what you are least sure about.'
+    : n===0 ? 'Work through the list and this will tell you when you are ready.'
+    : (boxes.length-n)+' left. The last two catch the most bugs.';
+}
+tally();
+</script>

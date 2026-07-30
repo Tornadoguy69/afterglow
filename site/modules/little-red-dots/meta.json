@@ -1,0 +1,34 @@
+{
+  "id": "little-red-dots",
+  "title": "The Little Red Dots",
+  "blurb": "300+ objects JWST found that nobody predicted and nobody can yet explain. Four competing models scored against the same eight observations.",
+  "tier": "active",
+  "entry": "index.html",
+  "sources": [
+    {
+      "claim": "Discovery and abundance",
+      "cite": "Matthee et al. 2024, ApJ 963, 129"
+    },
+    {
+      "claim": "Direct-collapse interpretation",
+      "cite": "phys.org summary, Feb 2026"
+    },
+    {
+      "claim": "Super-Eddington feeding bursts",
+      "cite": "phys.org summary, Jun 2026"
+    },
+    {
+      "claim": "Blue UV companions, 36 of 83",
+      "cite": "Live Science, 2026"
+    },
+    {
+      "claim": "Black-hole-star interpretation",
+      "cite": "Space.com / CfA summaries, 2026"
+    }
+  ],
+  "open": [
+    "No consensus exists. The scorecard encodes a reading of the 2026 literature, not a settled result.",
+    "The plotted spectra are schematic V-shapes, not fitted photometry.",
+    "This page is expected to be wrong within a year. That is what the active badge means."
+  ]
+}

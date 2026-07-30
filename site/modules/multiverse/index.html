@@ -1,0 +1,430 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Multiverse — Afterglow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../engine/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <a class="back" href="../../index.html">← All topics</a>
+      <h1>The Multiverse</h1>
+      <span class="tier tier-speculative">Speculative</span>
+      <span class="sub">three different ideas, one shared problem</span>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">Why they never meet</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset" title="Snap back">⤢</button>
+          <button class="ib" id="insMin" title="Collapse">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture } from '../../engine/engine.js';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   The three things people mean by "multiverse" are not variants of one idea.
+   Different physics, different claims, and they fail to be testable for
+   different reasons. Each gets its own picture below, because collapsing them
+   into one image is most of why the subject is confusing.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const IDEAS = {
+  'Eternal inflation':{
+    key:'bubbles',
+    from:'Inflationary cosmology — Guth 1981, Linde 1983, Vilenkin 1983',
+    claim:'Inflation does not stop everywhere at once. It keeps going in most of space while '+
+          'bubbles of ordinary, non-inflating spacetime nucleate inside it. Each bubble is a '+
+          'universe. Ours is one of them.',
+    why:'The space between bubbles inflates faster than the bubbles grow into it. Two bubbles '+
+        'recede from one another faster than light can cross the gap, so no signal, particle or '+
+        'influence ever passes between them.',
+    test:'A collision with a neighbour early on would leave a circular temperature disc in the '+
+         'CMB. This has been searched for. Nothing has been found.',
+    status:'Motivated by real physics — the multiverse is a consequence rather than an '+
+           'assumption. Still untested.'},
+  'Many worlds':{
+    key:'branches',
+    from:'Quantum mechanics — Everett 1957',
+    claim:'The wavefunction never collapses. Every quantum outcome happens, and the observer '+
+          'splits along with everything else. The other outcomes are as real as this one.',
+    why:'Branches decohere. Once they stop interfering, no measurement inside one branch can '+
+        'reveal another — and the mathematics is identical either way.',
+    test:'None known. Many-worlds and collapse interpretations predict the same result for '+
+         'every experiment ever performed. It is a disagreement about what the formalism means.',
+    status:'Not a new theory — an interpretation of an extremely well-tested one. That is '+
+           'precisely why it cannot be tested separately.'},
+  'String landscape':{
+    key:'landscape',
+    from:'String theory — Bousso & Polchinski 2000, Susskind 2003',
+    claim:'The extra dimensions of string theory can be folded in a colossal number of ways — '+
+          'the figure usually quoted is around 10⁵⁰⁰ — and each folding gives different physical '+
+          'constants. Every valley in the landscape is a possible universe.',
+    why:'Other vacua sit in causally disconnected regions, and there is no way to sample the '+
+        'space of possibilities even in principle.',
+    test:'None currently. String theory has yet to make a confirmed prediction that '+
+         'distinguishes it from its alternatives.',
+    status:'The most speculative of the three. It rests on a framework that is itself unconfirmed.'}
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCENE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const app = boot({
+  cameraPos:new THREE.Vector3(0,52,168), target:new THREE.Vector3(0,0,0),
+  dist:[40,900], near:0.5, far:6000, exposure:0.9,
+  bloom:{strength:0.55, radius:0.62, threshold:0.30}
+});
+const {scene,camera}=app;
+
+const groups = {
+  bubbles:  new THREE.Group(),
+  branches: new THREE.Group(),
+  landscape:new THREE.Group()
+};
+Object.values(groups).forEach(g=>{ g.visible=false; scene.add(g); });
+
+/* ───────────────────────── 1. ETERNAL INFLATION ─────────────────────────
+   Bubbles are membranes, not blobs: a fresnel rim that brightens at grazing
+   angles, which is what actually makes a transparent sphere read as a sphere. */
+const H=1.0;
+const bubbleMat = c => new THREE.ShaderMaterial({
+  uniforms:{uColor:{value:new THREE.Color(c)}, uOpacity:{value:1}},
+  transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide,
+  vertexShader:`varying vec3 vN; varying vec3 vView;
+    void main(){
+      vN = normalize(normalMatrix*normal);
+      vec4 mv = modelViewMatrix*vec4(position,1.0);
+      vView = normalize(-mv.xyz);
+      gl_Position = projectionMatrix*mv;
+    }`,
+  fragmentShader:`uniform vec3 uColor; uniform float uOpacity;
+    varying vec3 vN; varying vec3 vView;
+    void main(){
+      float f = 1.0 - abs(dot(normalize(vN), normalize(vView)));
+      float rim = pow(f, 2.4);                 // membrane brightens at the edge
+      float core = pow(1.0-f, 3.0)*0.10;       // faint interior wash
+      gl_FragColor = vec4(uColor*(rim*1.9 + core), (rim*0.9+core)*uOpacity);
+    }`
+});
+
+const NB=22;
+const bubbles=[];
+{
+  let seed=23;
+  const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff;};
+  for(let i=0;i<NB;i++){
+    bubbles.push({
+      t0: 0.15+rnd()*2.6,
+      // Comoving separations of several 1/H. Nucleation is rare compared with the
+      // expansion rate, so neighbours sit well beyond the 1/H reach limit.
+      x:(rnd()-0.5)*9, y:(rnd()-0.5)*4.5, z:(rnd()-0.5)*9,
+      hue:0.03+rnd()*0.13
+    });
+  }
+  bubbles[0].t0=0.15; bubbles[0].x=0; bubbles[0].y=0; bubbles[0].z=0;   // ours
+}
+const bubbleMeshes=bubbles.map((b,i)=>{
+  const col=new THREE.Color().setHSL(b.hue,0.75,i===0?0.66:0.5);
+  const m=new THREE.Mesh(new THREE.SphereGeometry(1,44,30), bubbleMat(col));
+  groups.bubbles.add(m); return m;
+});
+
+/* the inflating medium, drawn as a lattice so the stretching is actually visible */
+const latticeGeo=new THREE.BufferGeometry();
+{
+  const N=9, S=1, pts=[];
+  const c=i=>(i-(N-1)/2)/((N-1)/2)*S;
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+    pts.push(c(i),c(j),-S,  c(i),c(j),S);
+    pts.push(c(i),-S,c(j),  c(i),S,c(j));
+    pts.push(-S,c(i),c(j),  S,c(i),c(j));
+  }
+  latticeGeo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+}
+const lattice=new THREE.LineSegments(latticeGeo,
+  new THREE.LineBasicMaterial({color:0x4A5570,transparent:true,opacity:0.22}));
+groups.bubbles.add(lattice);
+
+/* ───────────────────────── 2. MANY WORLDS ─────────────────────────
+   A real 3D tree: every node splits in two, branches rotate out of plane, and
+   the tips glow. Each tip is a branch of the wavefunction. */
+const branchPts=[], branchTips=[];
+(function grow(p, dir, len, depth, twist){
+  if(depth>10 || len<0.9) return;
+  const q=p.clone().add(dir.clone().multiplyScalar(len));
+  branchPts.push(p.x,p.y,p.z, q.x,q.y,q.z);
+  if(depth>=9){ branchTips.push(q.x,q.y,q.z); return; }
+  const axis=new THREE.Vector3(Math.cos(twist),0,Math.sin(twist)).normalize();
+  const a=dir.clone().applyAxisAngle(axis, 0.42).normalize();
+  const b=dir.clone().applyAxisAngle(axis,-0.42).normalize();
+  grow(q,a,len*0.78,depth+1,twist+1.9);
+  grow(q,b,len*0.78,depth+1,twist+1.9);
+})(new THREE.Vector3(0,-46,0), new THREE.Vector3(0,1,0), 26, 0, 0.7);
+
+const treeGeo=new THREE.BufferGeometry();
+treeGeo.setAttribute('position',new THREE.Float32BufferAttribute(branchPts,3));
+groups.branches.add(new THREE.LineSegments(treeGeo,
+  new THREE.LineBasicMaterial({color:0x9FC0EA,transparent:true,opacity:0.5})));
+
+const tipGeo=new THREE.BufferGeometry();
+tipGeo.setAttribute('position',new THREE.Float32BufferAttribute(branchTips,3));
+const tips=new THREE.Points(tipGeo,new THREE.PointsMaterial({
+  size:5.5,map:starTexture(true),color:0xBFD6F5,transparent:true,opacity:0.95,
+  depthWrite:false,blending:THREE.AdditiveBlending}));
+groups.branches.add(tips);
+
+/* ───────────────────────── 3. STRING LANDSCAPE ─────────────────────────
+   The name is literal. A potential-energy surface with an enormous number of
+   local minima; each valley is a vacuum with its own physical constants. */
+const LAND=190, SEG=150;
+const landGeo=new THREE.PlaneGeometry(LAND,LAND,SEG,SEG);
+landGeo.rotateX(-Math.PI/2);
+const height=(x,z)=>
+   10.0*Math.sin(x*0.055)*Math.cos(z*0.048)
+ +  6.5*Math.sin(x*0.115+1.7)*Math.cos(z*0.101-0.6)
+ +  3.4*Math.sin(x*0.232-0.4)*Math.cos(z*0.199+1.1)
+ +  1.7*Math.sin(x*0.451+2.2)*Math.cos(z*0.407);
+{
+  const p=landGeo.attributes.position;
+  const colors=new Float32Array(p.count*3);
+  const c=new THREE.Color();
+  let lo=1e9, hi=-1e9;
+  for(let i=0;i<p.count;i++){
+    const y=height(p.getX(i), p.getZ(i));
+    p.setY(i,y); if(y<lo)lo=y; if(y>hi)hi=y;
+  }
+  for(let i=0;i<p.count;i++){
+    const t=(p.getY(i)-lo)/(hi-lo);
+    c.setHSL(0.60-0.52*t, 0.55, 0.16+0.44*t);     // valleys deep blue, peaks warm
+    colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
+  }
+  landGeo.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  landGeo.computeVertexNormals();
+}
+groups.landscape.add(new THREE.Mesh(landGeo, new THREE.MeshBasicMaterial({
+  vertexColors:true, wireframe:true, transparent:true, opacity:0.55})));
+
+/* mark the minima — each one a different universe */
+{
+  const step=LAND/SEG, minima=[];
+  for(let x=-LAND/2+step; x<LAND/2-step; x+=step*3)
+    for(let z=-LAND/2+step; z<LAND/2-step; z+=step*3){
+      const h0=height(x,z);
+      let isMin=true;
+      for(const [dx,dz] of [[step,0],[-step,0],[0,step],[0,-step],[step,step],[-step,-step]])
+        if(height(x+dx,z+dz) < h0){ isMin=false; break; }
+      if(isMin) minima.push(x,h0+1.4,z);
+    }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(minima,3));
+  groups.landscape.add(new THREE.Points(g,new THREE.PointsMaterial({
+    size:7,map:starTexture(true),color:0xFFC98A,transparent:true,opacity:1,
+    depthWrite:false,blending:THREE.AdditiveBlending})));
+  window.__minima = minima.length/3;
+}
+/* ours — one valley among them */
+{
+  const g=new THREE.BufferGeometry();
+  const x=-24, z=16;
+  g.setAttribute('position',new THREE.Float32BufferAttribute([x,height(x,z)+2.2,z],3));
+  groups.landscape.add(new THREE.Points(g,new THREE.PointsMaterial({
+    size:15,map:starTexture(true),color:0x8FB8FF,transparent:true,opacity:1,
+    depthWrite:false,blending:THREE.AdditiveBlending})));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+const P={idea:'Eternal inflation', t:2.4, play:true};
+
+const sT=ui.slider({label:'Time  (e-folds of inflation)', min:0.2, max:4.5, step:0.01,
+  value:P.t, fmt:v=>v.toFixed(2),
+  on:v=>{P.t=v; P.play=false; playBtn.textContent='▶  Run'; update();}});
+const playBtn=ui.button('❚❚  Pause',()=>{
+  P.play=!P.play; playBtn.textContent=P.play?'❚❚  Pause':'▶  Run';});
+
+const panel=el('div');
+panel.appendChild(ui.section('Read this first', ui.note(
+  'This page carries a <b>speculative</b> badge, and it means something. Everything else on '+
+  'this site is measured. Nothing here is.'),
+  ui.note('That does not make these ideas silly — two of the three fall out of theories that '+
+  'work very well elsewhere. It makes them <b>untested</b>, which is different from both '+
+  '"true" and "nonsense".')));
+
+panel.appendChild(ui.section('Which one do you mean?',
+  ui.btnRow(...Object.keys(IDEAS).map(k=>ui.button(k,()=>{P.idea=k; update();}))),
+  ui.note('These get lumped under one word and they are not the same idea.')));
+
+const timeSec=ui.section('Inflation', sT.node, ui.btnRow(playBtn));
+panel.appendChild(timeSec);
+
+const ro=ui.readout([
+  {id:'idea',  k:'idea', cls:'big'},
+  {id:'from',  k:'comes from'},
+  {id:'ours',  k:'our reach', tip:'Comoving radius our bubble has grown to, and the limit it converges on.'},
+  {id:'near',  k:'gap to nearest', tip:'Comoving separation. Fixed for all time — comoving coordinates do not stretch.'},
+  {id:'sep',   k:'both reaches, maxed'},
+  {id:'meet',  k:'will they ever meet?', cls:'hi'},
+  {id:'test',  k:'any way to test it?'}
+]);
+panel.appendChild(ui.section('State', ro.node));
+
+const detail=el('div');
+panel.appendChild(ui.section('Why you cannot check', detail));
+
+panel.appendChild(ui.section('The honest summary', ui.note(
+  'A theory that predicts everything predicts nothing. The serious objection is not that the '+
+  'multiverse is strange — it is that <b>no observation could come out differently if it were '+
+  'false</b>.'),
+  ui.note('One real exception is worth knowing. Eternal inflation could in principle leave a '+
+  'circular scar in the CMB from a bubble collision. People have looked. It is not there. That '+
+  'is a genuine test, and so far it has come back negative.')));
+
+panel.appendChild(ui.section('Sources', ui.ref(
+  '<b>Inflation:</b> Guth 1981, PRD 23, 347 · '+
+  '<b>Eternal inflation:</b> Linde 1983, Phys. Lett. B 129, 177; Vilenkin 1983, PRD 27, 2848 · '+
+  '<b>Many worlds:</b> Everett 1957, Rev. Mod. Phys. 29, 454 · '+
+  '<b>String landscape:</b> Bousso &amp; Polchinski 2000, JHEP 06, 006; Susskind 2003, hep-th/0302219 · '+
+  '<b>Bubble-collision search:</b> Feeney et al. 2011, PRL 107, 071301 — no detection · '+
+  '<b>Testability critique:</b> Ellis &amp; Silk 2014, Nature 516, 321')));
+app.setPanel(panel);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GEOMETRY OF THE ARGUMENT
+   A bubble nucleating at t₀ can only ever reach a comoving distance e^{−Ht₀}/H —
+   the integral ∫c dt/a converges. Two bubbles touch only if the SUM of their two
+   asymptotic reaches exceeds the fixed comoving gap between them.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function nearestInfo(){
+  let d=1e9, best=null;
+  for(let i=1;i<bubbles.length;i++){
+    const b=bubbles[i];
+    const s=Math.sqrt(b.x*b.x+b.y*b.y+b.z*b.z);
+    if(s<d){ d=s; best=b; }
+  }
+  return {d, b:best};
+}
+const maxReach = t0 => Math.exp(-H*t0)/H;
+
+function drawPlot(){
+  const p=Plot({xmin:0,xmax:4.5,ymin:0,ymax:1.55,
+    xfmt:v=>v.toFixed(0), yfmt:v=>v.toFixed(1)});
+  p.frame('HOW FAR A BUBBLE CAN EVER REACH','e-folds of inflation','comoving radius  [1/H]',
+    [0,1,2,3,4],[0,0.5,1.0,1.5]);
+
+  const pts=[];
+  for(let t=0;t<=4.5;t+=0.03) pts.push([t, (1-Math.exp(-H*t))/H]);
+  p.line(pts, PAL.clay, 2.4);
+  p.hline(1/H, PAL.rust, [5,3]);
+  p.label('hard limit — 1/H, never exceeded', p.x0+8, p.ty(1/H)-6, PAL.rust);
+
+  const n=nearestInfo();
+  if(n.d<1.5){
+    p.hline(n.d, PAL.blue, [3,3]);
+    p.label('nearest bubble: '+n.d.toFixed(2)+'/H', p.x0+8, p.ty(n.d)-6, PAL.blue);
+  } else {
+    p.label('nearest bubble sits at '+n.d.toFixed(1)+'/H — above this chart, out of reach forever',
+            p.x0+8, p.y1+16, PAL.blue);
+  }
+  p.vline(P.t, PAL.ink, [1,2]);
+  p.marker(P.t, (1-Math.exp(-H*P.t))/H, PAL.ink, 4.2);
+  p.label('the curve flattens; the gap does not close', p.x0+8, p.y0-9, PAL.ink3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+function update(){
+  const idea=IDEAS[P.idea];
+  const k=idea.key;
+  Object.entries(groups).forEach(([name,g])=>g.visible = (name===k));
+  timeSec.style.display = k==='bubbles' ? '' : 'none';
+
+  if(k==='bubbles'){
+    /* Drawn in COMOVING coordinates: positions are fixed and the bubbles grow into
+       them. That is the argument made visible — the gaps never change while each
+       bubble's reach saturates at 1/H. Plotting physical positions instead would
+       fling everything off-screen within a couple of e-folds and show nothing. */
+    const a=Math.exp(H*P.t), SCALE=18;
+    lattice.scale.setScalar(a*SCALE*0.55);        // the medium itself still stretches
+    bubbles.forEach((b,i)=>{
+      const m=bubbleMeshes[i];
+      if(P.t < b.t0){ m.visible=false; return; }
+      m.visible=true;
+      const reach=(Math.exp(-H*b.t0)-Math.exp(-H*P.t))/H;
+      m.position.set(b.x*SCALE, b.y*SCALE, b.z*SCALE);
+      m.scale.setScalar(Math.max(0.5, reach*SCALE));
+      m.material.uniforms.uOpacity.value = i===0 ? 1.0 : 0.7;
+    });
+  }
+
+  const n=nearestInfo();
+  const combined=maxReach(bubbles[0].t0)+maxReach(n.b.t0);
+  const reachNow=(Math.exp(-H*bubbles[0].t0)-Math.exp(-H*P.t))/H;
+  const isB = k==='bubbles';
+
+  ro.set('idea', P.idea);
+  ro.set('from', idea.from.split('—')[0].trim());
+  ro.set('ours', isB? fmt(reachNow,3)+' → '+fmt(maxReach(bubbles[0].t0),3)+' /H' : '—');
+  ro.set('near', isB? fmt(n.d,2)+' /H' : '—');
+  ro.set('sep',  isB? fmt(combined,2)+' /H' : '—');
+  ro.set('meet', isB
+    ? (combined < n.d
+        ? '<span class="warn">never — '+fmt(combined,2)+' &lt; '+fmt(n.d,2)+'</span>'
+        : '<span class="good">yes, these two collide</span>')
+    : (k==='branches'
+        ? '<span class="warn">no — branches stop interfering</span>'
+        : '<span class="warn">no — causally disconnected</span>'));
+  ro.set('test', '<span class="warn">'+(isB? 'one, and it came back negative' : 'none known')+'</span>');
+
+  detail.innerHTML='';
+  detail.appendChild(ui.note('<b>The claim.</b> '+idea.claim));
+  detail.appendChild(ui.note('<b>Why it is out of reach.</b> '+idea.why));
+  detail.appendChild(ui.note('<b>Any test?</b> '+idea.test));
+  detail.appendChild(ui.note('<b>Status.</b> '+idea.status));
+
+  app.setCaption(
+    k==='landscape'
+      ? `<b>${P.idea}.</b> Every valley is a vacuum with different physical constants — `+
+        `${window.__minima||0} are marked here, against a claimed 10⁵⁰⁰. The blue one is ours. `+
+        `<span class="cite">${idea.from}</span>`
+      : k==='branches'
+      ? `<b>${P.idea}.</b> Every split is a measurement; every tip is a branch of the wavefunction, `+
+        `as real as this one. ${idea.why} <span class="cite">${idea.from}</span>`
+      : `<b>${P.idea}.</b> ${idea.why} <span class="cite">${idea.from}</span>`);
+
+  drawPlot();
+}
+
+let t=0;
+app.onFrame(dt=>{
+  t+=dt;
+  const k=IDEAS[P.idea].key;
+  if(k==='branches'){ groups.branches.rotation.y=t*0.13; }
+  if(k==='landscape'){ groups.landscape.rotation.y=t*0.055; }
+  if(k==='bubbles' && P.play){
+    P.t+=dt*0.35; if(P.t>4.5) P.t=0.2; sT.set(P.t); update();
+  }
+});
+app.onThemeChange(update);   // repaint the plot when the theme flips
+update();
+</script>

@@ -1,0 +1,497 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Life of a Star — Afterglow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../engine/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <a class="back" href="../../index.html">← All topics</a>
+      <h1>The Life of a Star</h1>
+      <span class="tier tier-established">Established</span>
+      <span class="sub">one number decides everything: mass</span>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">Hertzsprung–Russell diagram</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset" title="Snap back">⤢</button>
+          <button class="ib" id="insMin" title="Collapse">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, deepField, starTexture }
+  from '../../engine/engine.js';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STELLAR PHYSICS — plain functions, no rendering. Everything below is a
+   standard relation with a source; nothing is tuned to look good.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Piecewise mass–luminosity relation (Duric, Advanced Astrophysics, 2004) */
+function luminosity(M){
+  if(M < 0.43) return 0.23*Math.pow(M,2.3);
+  if(M < 2)    return Math.pow(M,4);
+  if(M < 55)   return 1.4*Math.pow(M,3.5);
+  return 32000*M;
+}
+/* Main-sequence radius (Demircan & Kahraman 1991, simplified) */
+const radiusMS = M => M<1 ? Math.pow(M,0.8) : Math.pow(M,0.57);
+/* Stefan–Boltzmann inverted: L = 4πR²σT⁴, normalised to the Sun */
+const teff = (L,R) => 5772*Math.pow(L/(R*R), 0.25);
+/* Main-sequence lifetime.
+   The textbook shortcut t = 10 Gyr · M/L underestimates massive stars by ~4×: they
+   have large convective cores that mix far more of their hydrogen into the burning
+   region, so the available fuel fraction is not constant. Interpolated instead from
+   evolutionary models — Ekström et al. 2012, A&A 537, A146 (Z=0.014, non-rotating),
+   extended below 0.8 M☉ where no star has yet had time to leave the main sequence. */
+const MS_LIFETIME = [
+  [0.10, 6000], [0.30, 800], [0.50, 100], [0.80, 25],  [1.00, 10],
+  [1.50, 2.7],  [2.00, 1.1], [3.00, 0.35],[5.00, 0.10],[7.00, 0.045],
+  [9.00, 0.026],[15.0, 0.0116],[20.0, 0.0081],[25.0, 0.0064],
+  [32.0, 0.0051],[40.0, 0.0043],[60.0, 0.0035]
+];
+function lifetimeGyr(M){
+  const T=MS_LIFETIME;
+  if(M<=T[0][0]) return T[0][1];
+  if(M>=T[T.length-1][0]) return T[T.length-1][1];
+  for(let i=0;i<T.length-1;i++){
+    if(M>=T[i][0] && M<=T[i+1][0]){
+      const f=(Math.log10(M)-Math.log10(T[i][0]))/(Math.log10(T[i+1][0])-Math.log10(T[i][0]));
+      return Math.pow(10, Math.log10(T[i][1]) + f*(Math.log10(T[i+1][1])-Math.log10(T[i][1])));
+    }
+  }
+  return 10;
+}
+
+const M_CH = 1.44;          // Chandrasekhar limit, M☉
+const AGE_UNIVERSE = 13.8;  // Gyr
+
+/* Initial–final mass relation for white dwarfs (Cummings et al. 2018, ApJ 866, 21).
+   Calibrated for 0.83 < M_i < 7.2; below that the star barely loses mass, and the
+   relation must never be allowed to return more than the star started with. */
+function whiteDwarfMass(M){
+  if(M < 0.85) return 0.85*M;
+  if(M < 2.85) return Math.min(0.107*M + 0.471, 0.9*M);
+  if(M < 3.60) return 0.181*M + 0.210;
+  return 0.0835*M + 0.565;
+}
+
+function fate(M){
+  if(M < 0.08) return {name:'Brown dwarf', via:'never ignites hydrogen',
+    detail:'Below 0.08 M☉ the core never gets hot enough for sustained fusion. It is not a star.',
+    kind:'bd'};
+  if(M < 0.5)  return {name:'Helium white dwarf', via:'no giant phase',
+    detail:'Fully convective, burns its hydrogen with extreme patience. None have died yet — the universe is not old enough.',
+    kind:'wd'};
+  if(M < 8)    return {name:'Carbon–oxygen white dwarf', via:'planetary nebula',
+    detail:'Sheds its envelope as a planetary nebula and leaves an Earth-sized core held up by electron degeneracy pressure.',
+    kind:'wd'};
+  if(M < 20)   return {name:'Neutron star', via:'core-collapse supernova',
+    detail:'The iron core exceeds the Chandrasekhar limit, electrons are forced into protons, and what is left is a city-sized nucleus.',
+    kind:'ns'};
+  return {name:'Black hole', via:'core-collapse supernova',
+    detail:'Even neutron degeneracy pressure fails. Nothing known can hold it up.',
+    kind:'bh'};
+}
+
+/* Jeans mass — the mass at which a cold cloud can no longer resist its own gravity.
+   M_J = (5kT / G μ m_H)^{3/2} (3 / 4πρ)^{1/2}, in cgs, returned in solar masses. */
+function jeansMass(T_K, n_cm3, mu=2.3){
+  const k=1.380649e-16, G=6.674e-8, mH=1.6735e-24, Msun=1.989e33;
+  const rho = n_cm3*mu*mH;
+  const a = Math.pow(5*k*T_K/(G*mu*mH), 1.5);
+  const b = Math.sqrt(3/(4*Math.PI*rho));
+  return a*b/Msun;
+}
+/* Free-fall time, t_ff = sqrt(3π / 32Gρ), returned in years. */
+function freeFallYr(n_cm3, mu=2.3){
+  const G=6.674e-8, mH=1.6735e-24;
+  const rho=n_cm3*mu*mH;
+  return Math.sqrt(3*Math.PI/(32*G*rho))/3.156e7;
+}
+
+/* Planckian locus approximation (Tanner Helland), 1000–40000 K */
+function blackbodyRGB(T){
+  const t=Math.max(1000,Math.min(40000,T))/100;
+  const cl=v=>Math.max(0,Math.min(255,v));
+  const r = t<=66 ? 255 : 329.698727446*Math.pow(t-60,-0.1332047592);
+  const g = t<=66 ? 99.4708025861*Math.log(t)-161.1195681661
+                  : 288.1221695283*Math.pow(t-60,-0.0755148492);
+  const b = t>=66 ? 255 : (t<=19 ? 0 : 138.5177312231*Math.log(t-10)-305.0447927307);
+  return [cl(r)/255, cl(g)/255, cl(b)/255];
+}
+
+/* ───────── the star's state at a given fraction through its life ───────── */
+const PHASES = [
+  {key:'cloud',   t0:0.00, t1:0.12, label:'Molecular cloud'},
+  {key:'proto',   t0:0.12, t1:0.22, label:'Protostar'},
+  {key:'ms',      t0:0.22, t1:0.74, label:'Main sequence'},
+  {key:'giant',   t0:0.74, t1:0.90, label:'Giant / supergiant'},
+  {key:'death',   t0:0.90, t1:0.97, label:'Ejection'},
+  {key:'remnant', t0:0.97, t1:1.01, label:'Remnant'}
+];
+const phaseAt = t => PHASES.find(p=>t>=p.t0 && t<p.t1) || PHASES[PHASES.length-1];
+
+function stateAt(M, t){
+  const ph = phaseAt(t);
+  const f  = (t-ph.t0)/(ph.t1-ph.t0);          // 0..1 within the phase
+  const Lms = luminosity(M), Rms = radiusMS(M), Tms = teff(Lms,Rms);
+  const F = fate(M);
+  let L=Lms, R=Rms, T=Tms;
+
+  if(ph.key==='cloud'){                         // cold, huge, barely radiating
+    T = 20 + 60*f; R = 6000*(1-0.75*f); L = 4*Math.PI*R*R*Math.pow(T/5772,4)*1e-6;
+  } else if(ph.key==='proto'){                  // Hayashi track: nearly vertical drop in L
+    T = 80 + (3200-80)*Math.pow(f,0.5);
+    R = 1500*Math.pow(Rms/1500, f) * (1+8*(1-f));
+    L = (R*R)*Math.pow(T/5772,4);
+  } else if(ph.key==='ms'){                     // slow brightening, ~+10% over its life
+    L = Lms*(1+0.35*f); R = Rms*(1+0.15*f); T = teff(L,R);
+  } else if(ph.key==='giant'){
+    const swell = M<8 ? 200 : 900;              // AGB vs red supergiant
+    R = Rms*(1 + (swell-1)*Math.pow(f,1.6));
+    L = Lms*(1 + (M<8?2500:60)*Math.pow(f,1.4));
+    T = teff(L,R);
+  } else if(ph.key==='death'){
+    if(F.kind==='wd'){ R = Rms*200*(1-0.98*f) + 0.02; L = Lms*3000*(1-0.9*f); T = teff(L,R); }
+    else { L = Lms*(1 + 1e9*Math.pow(f,3)); R = Rms*900*(1-0.9*f)+1; T = teff(L,R); }
+  } else {                                      // remnant
+    if(F.kind==='wd'){ R = 0.0128*Math.pow(1.44/whiteDwarfMass(M),1/3); L = R*R*Math.pow(15000/5772,4); T=15000; }
+    else if(F.kind==='ns'){ R = 1.7e-5; T = 1e6; L = R*R*Math.pow(T/5772,4); }
+    else { R = 1e-6; T = 0; L = 0; }
+    if(F.kind==='bd'){ R = 0.1; T = 1000; L = R*R*Math.pow(T/5772,4); }
+  }
+  return {phase:ph, f, L:Math.max(L,1e-8), R:Math.max(R,1e-7), T:Math.max(T,0), fate:F, Lms, Rms, Tms};
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCENE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const app = boot({
+  cameraPos:new THREE.Vector3(0,26,86), target:new THREE.Vector3(0,0,0),
+  dist:[12,900], near:0.1, far:8000, exposure:0.80,
+  bloom:{strength:0.42, radius:0.55, threshold:0.35}
+});
+const {scene, camera} = app;
+const SPRITE = starTexture(false);
+deepField(scene, 1400, 1300, 2.2);
+
+/* --- photosphere: limb darkening + convective granulation --- */
+const starUni = {uColor:{value:new THREE.Color(1,1,1)}, uTime:{value:0}, uGran:{value:1}};
+const starMat = new THREE.ShaderMaterial({
+  uniforms:starUni,
+  vertexShader:`varying vec3 vN; varying vec3 vP;
+    void main(){ vN=normalize(normalMatrix*normal); vP=position;
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+  fragmentShader:`
+    uniform vec3 uColor; uniform float uTime, uGran; varying vec3 vN; varying vec3 vP;
+    float h(vec3 p){ return fract(sin(dot(p,vec3(12.9898,78.233,37.719)))*43758.5453); }
+    float noise(vec3 p){
+      vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+      float n=mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
+                  mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),
+                      mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z);
+      return n;
+    }
+    void main(){
+      // limb darkening, I/I0 = 1 - u(1 - cos theta), u = 0.6 (solar, visible)
+      float mu = clamp(dot(vN, vec3(0.0,0.0,1.0)), 0.0, 1.0);
+      float limb = 1.0 - 0.62*(1.0-mu);
+      float g = noise(vP*7.0 + vec3(0.0,uTime*0.25,0.0));
+      float g2 = noise(vP*19.0 - vec3(uTime*0.4,0.0,0.0));
+      float gran = 1.0 + uGran*(0.16*(g-0.5) + 0.09*(g2-0.5));
+      gl_FragColor = vec4(uColor*limb*gran*1.25, 1.0);
+    }`
+});
+const starMesh = new THREE.Mesh(new THREE.SphereGeometry(1,64,48), starMat);
+scene.add(starMesh);
+
+/* --- corona / glow --- */
+const glowMat = new THREE.SpriteMaterial({map:starTexture(true), color:0xffffff,
+  transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:0.9});
+const glow = new THREE.Sprite(glowMat); scene.add(glow);
+
+/* --- molecular cloud --- */
+function cloudPoints(n, spread){
+  const a=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    // clumpy: sum of gaussians so it looks like a cloud, not a ball
+    const cx=(Math.random()-0.5)*spread, cy=(Math.random()-0.5)*spread*0.6, cz=(Math.random()-0.5)*spread;
+    const s=spread*0.18;
+    a[i*3]=cx+(Math.random()+Math.random()-1)*s;
+    a[i*3+1]=cy+(Math.random()+Math.random()-1)*s;
+    a[i*3+2]=cz+(Math.random()+Math.random()-1)*s;
+  }
+  return a;
+}
+const CLOUD_N = 9000;
+const cloudBase = cloudPoints(CLOUD_N, 120);
+const cloudPos  = new Float32Array(cloudBase.length);
+const cloudGeo  = new THREE.BufferGeometry();
+cloudGeo.setAttribute('position', new THREE.BufferAttribute(cloudPos,3));
+const cloud = new THREE.Points(cloudGeo, new THREE.PointsMaterial({
+  size:1.6, map:SPRITE, color:0x7C93B8, transparent:true, opacity:0.5,
+  depthWrite:false, blending:THREE.AdditiveBlending}));
+scene.add(cloud);
+
+/* --- ejecta shell (planetary nebula or supernova remnant) --- */
+const SHELL_N = 7000;
+const shellDir = new Float32Array(SHELL_N*3), shellR = new Float32Array(SHELL_N);
+for(let i=0;i<SHELL_N;i++){
+  const ct=2*Math.random()-1, st=Math.sqrt(1-ct*ct), ph=Math.random()*6.2832;
+  shellDir[i*3]=st*Math.cos(ph); shellDir[i*3+1]=ct*0.75; shellDir[i*3+2]=st*Math.sin(ph);
+  shellR[i]=0.55+0.45*Math.random();
+}
+const shellPos=new Float32Array(SHELL_N*3);
+const shellGeo=new THREE.BufferGeometry();
+shellGeo.setAttribute('position',new THREE.BufferAttribute(shellPos,3));
+const shell=new THREE.Points(shellGeo,new THREE.PointsMaterial({
+  size:1.5, map:SPRITE, color:0x66C2C7, transparent:true, opacity:0.0,
+  depthWrite:false, blending:THREE.AdditiveBlending}));
+scene.add(shell);
+
+/* --- black hole: a dark sphere with a thin photon ring --- */
+const bh = new THREE.Mesh(new THREE.SphereGeometry(1,32,24),
+  new THREE.MeshBasicMaterial({color:0x000000}));
+const ringPts=[]; for(let i=0;i<=200;i++){const a=i/200*6.2832;
+  ringPts.push(new THREE.Vector3(Math.cos(a),0,Math.sin(a)));}
+const bhRing=new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts),
+  new THREE.LineBasicMaterial({color:0xFFB870,transparent:true,opacity:0.9}));
+bh.add(bhRing); bh.visible=false; scene.add(bh);
+
+/* --- scale reference: the Sun, always the same size --- */
+const sunRef = new THREE.Mesh(new THREE.SphereGeometry(1,24,18),
+  new THREE.MeshBasicMaterial({color:0xFFD9A0}));
+scene.add(sunRef);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+const P = {M:1.0, t:0.40, play:false, showSun:true, showCloud:true};
+
+const sM = ui.slider({label:'Stellar mass  M', min:0.05, max:60, value:P.M, log:true,
+  unit:'M☉', fmt:v=>v<1?v.toFixed(3):v.toFixed(2), on:v=>{P.M=v; update();}});
+const sT = ui.slider({label:'Progress through its life', min:0, max:1, step:0.002,
+  value:P.t, fmt:v=>(v*100).toFixed(0)+'%', on:v=>{P.t=v; P.play=false; playBtn.textContent='▶  Play its life'; update();}});
+
+const playBtn = ui.button('▶  Play its life',()=>{
+  P.play=!P.play;
+  playBtn.textContent = P.play? '❚❚  Pause' : '▶  Play its life';
+});
+
+const ro = ui.readout([
+  {id:'phase',k:'current phase'},
+  {id:'L',k:'luminosity',       tip:'Total energy radiated per second, relative to the Sun.'},
+  {id:'R',k:'radius',           tip:'Relative to the Sun. Giants swell by a factor of hundreds.'},
+  {id:'T',k:'surface temperature', tip:'Sets the colour. Blue is hot, red is cool — the opposite of the plumbing convention.'},
+  {id:'cls',k:'spectral class',  tip:'O B A F G K M — the traditional sequence, hottest to coolest. The Sun is G.'},
+  {id:'life',k:'main-sequence lifetime',
+   tip:'Fuel scales with mass, but burn rate scales with mass to the ~3.5 power. Heavy stars are spectacularly wasteful.'},
+  {id:'age',k:'age at this point'},
+  {id:'rem',k:'remnant mass'},
+  {id:'fate',k:'how it ends', cls:'big',
+   tip:'Determined almost entirely by the initial mass. Nothing else matters as much.'}
+]);
+
+const panel = el('div');
+panel.appendChild(ui.section('What decides everything',
+  ui.eq('L / L☉ ≈ (M / M☉)<sup>3.5</sup>   <span class="c">for 2–55 M☉</span>'),
+  ui.eq('t ≈ 10 Gyr × (M / L)   <span class="c">fuel ÷ burn rate</span>'),
+  ui.note('A star spends its whole life balancing gravity against fusion pressure. <b>Its mass at birth '+
+          'sets the outcome</b> — brightness, colour, lifetime and how it dies. Double the mass and it '+
+          'burns roughly eleven times faster.')
+));
+panel.appendChild(ui.section('Parameters', sM.node, sT.node, ui.btnRow(playBtn),
+  ui.note('Try 0.2, 1, 10 and 30 M☉. The last one lives about six million years — a rounding error '+
+          'against the Sun\'s ten billion.')));
+panel.appendChild(ui.section('State', ro.node));
+panel.appendChild(ui.section('Display',
+  ui.toggle({label:'Show the Sun for scale', value:true, on:v=>{P.showSun=v; update();}}).node,
+  ui.toggle({label:'Show the birth cloud', value:true, on:v=>{P.showCloud=v; update();}}).node,
+  ui.legend([[PAL.ink,'this star'],[PAL.kraft,'main sequence'],[PAL.blue,'giants'],[PAL.sage,'white dwarfs']])
+));
+panel.appendChild(ui.section('Sources', ui.ref(
+  '<b>Mass–luminosity:</b> Duric, <i>Advanced Astrophysics</i>, CUP 2004 · '+
+  '<b>Radii:</b> Demircan &amp; Kahraman 1991, Ap&amp;SS 181, 313 · '+
+  '<b>White-dwarf masses:</b> Cummings et al. 2018, ApJ 866, 21 · '+
+  '<b>Chandrasekhar limit:</b> Chandrasekhar 1931, ApJ 74, 81 · '+
+  '<b>Jeans criterion:</b> Jeans 1902, Phil. Trans. R. Soc. A 199, 1')));
+app.setPanel(panel);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HR DIAGRAM
+   ═══════════════════════════════════════════════════════════════════════════ */
+const msTrack = (()=>{
+  const a=[];
+  for(let lm=-1.1; lm<=1.78; lm+=0.02){
+    const M=Math.pow(10,lm), L=luminosity(M), R=radiusMS(M);
+    a.push([Math.log10(teff(L,R)), Math.log10(L)]);
+  }
+  return a;
+})();
+let track=[];
+
+function drawHR(s){
+  const XL={'4.5':'32 000','4.0':'10 000','3.5':'3 200'};
+  const YL={'-4':'10⁻⁴','-2':'10⁻²','0':'1','2':'10²','4':'10⁴','6':'10⁶'};
+  const p = Plot({xmin:4.72, xmax:3.32, ymin:-5.2, ymax:6.6,     // x reversed: hot on the left
+    xfmt:v=>XL[v.toFixed(1)] ?? '',
+    yfmt:v=>YL[String(v)] ?? ''});
+  p.frame('HERTZSPRUNG–RUSSELL DIAGRAM','surface temperature  [K]','luminosity  [L☉]',
+    [4.5,4.0,3.5],[-4,-2,0,2,4,6]);
+
+  // giant branch and white-dwarf regions, drawn as guides
+  p.line([[3.95,1.6],[3.75,2.2],[3.60,3.0],[3.52,4.2]], PAL.blue, 1.4, [5,3]);
+  p.line([[4.60,-1.6],[4.20,-2.6],[3.90,-3.6],[3.70,-4.4]], PAL.sage, 1.4, [5,3]);
+  p.line(msTrack, PAL.kraft, 2.2);
+  p.label('main sequence', p.tx(4.12), p.ty(1.2), PAL.kraft);
+  p.label('giants',        p.tx(3.66), p.ty(3.3), PAL.blue);
+  p.label('white dwarfs',  p.tx(4.20), p.ty(-3.4), PAL.sage);
+
+  if(track.length>1) p.line(track, PAL.clay, 2.0);
+  const x=Math.log10(Math.max(s.T,1000)), y=Math.log10(s.L);
+  p.marker(x, y, PAL.ink, 4.5);
+  // phase caption bottom-left, clear of the frame title and the giant branch
+  p.label(s.phase.label, p.x0+8, p.y0-9, PAL.ink);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UPDATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const SPECTRAL = T =>
+  T>=30000?'O' : T>=10000?'B' : T>=7500?'A' : T>=6000?'F' :
+  T>=5200?'G'  : T>=3700?'K'  : T>=2400?'M' : '—';
+
+const visRadius = R => Math.max(0.8, Math.min(42, 5.6*Math.pow(R, 0.30)));
+
+function update(){
+  const s = stateAt(P.M, P.t);
+  const F = s.fate;
+
+  // ---- 3D ----
+  const rgb = blackbodyRGB(s.T);
+  starUni.uColor.value.setRGB(rgb[0],rgb[1],rgb[2]);
+  const vr = visRadius(s.R);
+  const isBH = (s.phase.key==='remnant' && F.kind==='bh');
+
+  starMesh.visible = !isBH && s.phase.key!=='cloud';
+  starMesh.scale.setScalar(vr);
+  starUni.uGran.value = s.phase.key==='ms'||s.phase.key==='giant' ? 1 : 0.35;
+
+  glow.visible = starMesh.visible;
+  glow.scale.setScalar(vr*(s.phase.key==='death' ? 7 : 2.6));
+  glowMat.color.setRGB(rgb[0],rgb[1],rgb[2]);
+  glowMat.opacity = s.phase.key==='death' ? 0.95 : 0.40;
+
+  bh.visible = isBH;
+  if(isBH){ bh.scale.setScalar(3.2); bhRing.scale.setScalar(1.45); }
+
+  // birth cloud contracts then disperses
+  const cloudAmt = s.phase.key==='cloud' ? 1-0.35*s.f
+                 : s.phase.key==='proto' ? 0.55*(1-s.f) : 0;
+  cloud.visible = P.showCloud && cloudAmt>0.01;
+  if(cloud.visible){
+    const k = s.phase.key==='cloud' ? 1-0.55*s.f : 0.45;
+    for(let i=0;i<cloudBase.length;i++) cloudPos[i]=cloudBase[i]*k;
+    cloudGeo.attributes.position.needsUpdate=true;
+    cloud.material.opacity=0.5*cloudAmt;
+  }
+
+  // ejecta
+  const ejecting = s.phase.key==='death' || s.phase.key==='remnant';
+  shell.visible = ejecting && F.kind!=='bd';
+  if(shell.visible){
+    const age = s.phase.key==='death' ? s.f : 1;
+    const speed = F.kind==='wd' ? 44 : 130;        // PN ~25 km/s vs SN ~10,000 km/s
+    const rr = 4 + speed*age;
+    for(let i=0;i<SHELL_N;i++){
+      const r=rr*shellR[i];
+      shellPos[i*3]=shellDir[i*3]*r; shellPos[i*3+1]=shellDir[i*3+1]*r; shellPos[i*3+2]=shellDir[i*3+2]*r;
+    }
+    shellGeo.attributes.position.needsUpdate=true;
+    shell.material.color.set(F.kind==='wd' ? 0x66C2C7 : 0xFF7A55);
+    shell.material.opacity = 0.75*(1-0.55*age);
+  }
+
+  sunRef.visible = P.showSun;
+  sunRef.scale.setScalar(visRadius(1));
+  sunRef.position.set(-visRadius(1)*2 - vr - 14, 0, 0);
+
+  // ---- readouts ----
+  const remMass = F.kind==='wd' ? whiteDwarfMass(P.M)
+                : F.kind==='ns' ? 1.4
+                : F.kind==='bh' ? P.M/3 : P.M;
+  const tms = lifetimeGyr(P.M);
+  const ageAt = Math.min(1,(P.t-0.22)/0.52)*tms;
+
+  ro.set('phase', s.phase.label);
+  ro.set('L', sci(s.L)+' L☉');
+  ro.set('R', (s.R<0.01? sci(s.R) : fmt(s.R,2))+' R☉');
+  ro.set('T', s.T>1e5 ? sci(s.T)+' K' : fmt(s.T,0)+' K');
+  ro.set('cls', SPECTRAL(s.T));
+  ro.set('life', tms>AGE_UNIVERSE
+    ? `<span class="good">${sci(tms)} Gyr</span>`
+    : (tms<0.02 ? fmt(tms*1000,1)+' Myr' : fmt(tms,2)+' Gyr'));
+  const ageTxt = ageAt<0.02? fmt(ageAt*1000,1)+' Myr' : fmt(ageAt,2)+' Gyr';
+  ro.set('age', P.t<0.22 ? '—'
+    : (ageAt>AGE_UNIVERSE ? `<span class="warn">${ageTxt} — hypothetical</span>` : ageTxt));
+  ro.set('rem', F.kind==='bd' ? '—' : fmt(remMass,2)+' M☉'+
+    (F.kind==='wd' && remMass>M_CH ? ' <span class="warn">&gt; M_Ch</span>' : ''));
+  ro.set('fate', F.name);
+
+  app.setCaption(
+    `<b>${F.name}</b> — ${F.via}. ${F.detail} ` +
+    (tms>AGE_UNIVERSE
+      ? `<span class="cite">Its main-sequence lifetime is ${sci(tms)} Gyr — the universe is 13.8.</span>`
+      : `<span class="cite">Main-sequence lifetime ${tms<0.02?fmt(tms*1000,0)+' Myr':fmt(tms,2)+' Gyr'}.</span>`));
+
+  drawHR(s);
+}
+
+/* build the evolutionary track once per mass, so the HR path is drawn ahead of the marker */
+function rebuildTrack(){
+  track=[];
+  for(let tt=0.22; tt<=Math.min(P.t,1); tt+=0.004){
+    const s=stateAt(P.M,tt);
+    track.push([Math.log10(Math.max(s.T,1000)), Math.log10(s.L)]);
+  }
+}
+const _update = update;
+update = function(){ rebuildTrack(); _update(); };
+
+let clock=0;
+app.onFrame(dt=>{
+  clock+=dt; starUni.uTime.value=clock;
+  starMesh.rotation.y += dt*0.05;
+  if(P.play){
+    P.t += dt*0.055;
+    if(P.t>1.005){ P.t=0; }
+    sT.set(P.t); update();
+  }
+});
+
+app.onThemeChange(update);   // repaint the plot when the theme flips
+update();
+</script>

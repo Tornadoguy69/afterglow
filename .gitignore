@@ -1,0 +1,16 @@
+node_modules/
+.DS_Store
+Thumbs.db
+
+# rendered video — regenerate with `node capture-clip.mjs <clip>`
+*.mp4
+*.webm
+*.timeline.json
+
+# scratch
+_*.png
+/tmp/
+
+# working notes, not part of the project
+NAMES.md
+TWITTER_POST.md

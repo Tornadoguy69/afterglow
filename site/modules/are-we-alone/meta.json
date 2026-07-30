@@ -1,0 +1,38 @@
+{
+  "id": "are-we-alone",
+  "title": "Are We Alone?",
+  "blurb": "Three terms of the Drake equation are measured. Four are not, and they swing the answer by twenty-six orders of magnitude.",
+  "tier": "active",
+  "entry": "index.html",
+  "sources": [
+    {
+      "claim": "Drake equation",
+      "cite": "Drake 1961, Green Bank conference"
+    },
+    {
+      "claim": "Milky Way star formation rate",
+      "cite": "Licquia & Newman 2015, ApJ 806, 96"
+    },
+    {
+      "claim": "Planet occurrence",
+      "cite": "Cassan et al. 2012, Nature 481, 167"
+    },
+    {
+      "claim": "eta-Earth",
+      "cite": "Bryson et al. 2021, AJ 161, 36"
+    },
+    {
+      "claim": "K2-18b biosignature reanalysis",
+      "cite": "arXiv:2505.13407; arXiv:2508.05961"
+    },
+    {
+      "claim": "Fermi paradox",
+      "cite": "Hart 1975, QJRAS 16, 128"
+    }
+  ],
+  "open": [
+    "f_l, f_i, f_c and L have no observational constraint whatsoever. The module states this rather than hiding it in a default value.",
+    "f_l has exactly one data point and it is subject to an unavoidable selection effect.",
+    "No confirmed biosignature or technosignature has ever been detected."
+  ]
+}

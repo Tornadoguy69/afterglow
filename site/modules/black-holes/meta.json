@@ -1,0 +1,45 @@
+{
+  "id": "black-holes",
+  "title": "Black Holes",
+  "blurb": "Every pixel integrates a light ray through curved spacetime. See why the shadow is far larger than the horizon — and why a bigger hole is gentler to fall into.",
+  "tier": "established",
+  "tags": ["general relativity", "gravitational lensing", "accretion"],
+  "entry": "index.html",
+  "sources": [
+    {
+      "claim": "Schwarzschild radius r_s = 2GM/c²",
+      "cite": "Schwarzschild 1916, Sitzungsber. Preuss. Akad. Wiss. 189"
+    },
+    {
+      "claim": "null geodesic equation d²u/dφ² + u = (3/2) r_s u², u = 1/r",
+      "cite": "standard result of the Schwarzschild metric; see Misner, Thorne & Wheeler, Gravitation, ch. 25",
+      "note": "Integrated per-pixel with RK2. The (3/2)r_s u² term is the entire departure from Newtonian gravity and is what produces the photon ring."
+    },
+    {
+      "claim": "apparent shadow radius = 3√3/2 r_s ≈ 2.598 r_s",
+      "cite": "Synge 1966, MNRAS 131, 463"
+    },
+    {
+      "claim": "accretion disk temperature profile T ∝ r^(-3/4)",
+      "cite": "Shakura & Sunyaev 1973, A&A 24, 337"
+    },
+    {
+      "claim": "Hawking temperature T = ħc³/8πGMk_B",
+      "cite": "Hawking 1974, Nature 248, 30"
+    },
+    {
+      "claim": "evaporation time ≈ 2.1e67 yr (M/M_sun)³",
+      "cite": "Page 1976, PRD 13, 198"
+    },
+    {
+      "claim": "M87* and Sgr A* masses",
+      "cite": "EHT Collaboration 2019, ApJL 875, L1; 2022, ApJL 930, L12"
+    }
+  ],
+  "open": [
+    "Non-spinning (Schwarzschild) only. Real black holes rotate, which drags the photon ring off-centre and moves the ISCO inward — Kerr geometry is not implemented.",
+    "Doppler beaming is not applied to the accretion disk, so the real asymmetry (one side much brighter) is missing.",
+    "The disk is a thin equatorial annulus with no vertical structure or optical depth."
+  ],
+  "performance": "Ray-marches a geodesic per pixel. Needs a GPU; software rendering is not viable. ?steps=N lowers the count."
+}

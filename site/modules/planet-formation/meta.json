@@ -1,0 +1,38 @@
+{
+  "id": "planet-formation",
+  "title": "Planet Formation",
+  "blurb": "Dust to worlds, and the snow line that decided why the inner planets are small. Includes the one step nobody has fully solved.",
+  "tier": "established",
+  "entry": "index.html",
+  "sources": [
+    {
+      "claim": "Disk temperature and MMSN surface density",
+      "cite": "Hayashi 1981, Prog. Theor. Phys. Suppl. 70, 35"
+    },
+    {
+      "claim": "Radial drift and the metre-size barrier",
+      "cite": "Weidenschilling 1977, MNRAS 180, 57"
+    },
+    {
+      "claim": "Isolation mass",
+      "cite": "Lissauer 1993, ARA&A 31, 129"
+    },
+    {
+      "claim": "Core accretion",
+      "cite": "Pollack et al. 1996, Icarus 124, 62"
+    },
+    {
+      "claim": "Streaming instability",
+      "cite": "Youdin & Goodman 2005, ApJ 620, 459; Johansen et al. 2007, Nature 448, 1022"
+    },
+    {
+      "claim": "Pebble accretion",
+      "cite": "Lambrechts & Johansen 2012, A&A 544, A32"
+    }
+  ],
+  "open": [
+    "Classical isolation mass at 5 AU falls short of Jupiter core estimates. Pebble accretion is the leading fix and is noted in the panel.",
+    "Planetary migration is not modelled at all.",
+    "The minimum-mass solar nebula is one disk model among several."
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "stellar-life",
+  "title": "The Life of a Star",
+  "blurb": "One number — mass at birth — decides brightness, colour, lifespan and how it dies. Run a star from molecular cloud to remnant on a live HR diagram.",
+  "tier": "established",
+  "tags": ["stars", "HR diagram", "nucleosynthesis"],
+  "entry": "index.html",
+  "sources": [
+    {
+      "claim": "mass–luminosity relation",
+      "cite": "Duric, N. — Advanced Astrophysics, Cambridge University Press, 2004"
+    },
+    {
+      "claim": "main-sequence radii",
+      "cite": "Demircan & Kahraman 1991, Ap&SS 181, 313"
+    },
+    {
+      "claim": "main-sequence lifetimes",
+      "cite": "Ekström et al. 2012, A&A 537, A146 (Z=0.014, non-rotating)",
+      "note": "Interpolated from evolutionary models. The textbook t = 10 Gyr·M/L shortcut underestimates massive stars by ~4x because their convective cores mix far more hydrogen into the burning region."
+    },
+    {
+      "claim": "initial–final mass relation for white dwarfs",
+      "cite": "Cummings et al. 2018, ApJ 866, 21",
+      "note": "Calibrated for 0.83 < M_i < 7.2; clamped below that so a remnant can never exceed its progenitor."
+    },
+    {
+      "claim": "Chandrasekhar limit, 1.44 M_sun",
+      "cite": "Chandrasekhar 1931, ApJ 74, 81"
+    },
+    {
+      "claim": "Jeans criterion for cloud collapse",
+      "cite": "Jeans 1902, Phil. Trans. R. Soc. A 199, 1"
+    },
+    {
+      "claim": "blackbody colour rendering",
+      "cite": "Planckian locus approximation, valid 1000–40000 K"
+    }
+  ],
+  "open": [
+    "The upper mass boundary between neutron-star and black-hole formation is uncertain and metallicity-dependent; 20 M_sun is a convention, not a measurement.",
+    "Mass loss through stellar winds is not modelled, which matters most above ~30 M_sun."
+  ]
+}

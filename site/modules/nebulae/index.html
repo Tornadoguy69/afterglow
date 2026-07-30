@@ -1,0 +1,305 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nebulae — Afterglow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../engine/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <a class="back" href="../../index.html">← All topics</a>
+      <h1>Nebulae</h1>
+      <span class="tier tier-established">Established</span>
+      <span class="sub">same cloud, three colours — the star decides</span>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">What the nebula emits</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset" title="Snap back">⤢</button>
+          <button class="ib" id="insMin" title="Collapse">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture, deepField } from '../../engine/engine.js';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHYSICS
+   A nebula does not have a colour of its own. What you see depends entirely on
+   whether the nearby star can produce photons above 13.6 eV — the energy needed
+   to ionise hydrogen, corresponding to λ < 91.2 nm.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const RY_NM = 91.2;                       // Lyman limit
+const ALPHA_B = 2.6e-13;                  // case-B recombination coeff at 10⁴ K, cm³/s
+const PC_CM = 3.086e18;
+
+/* Ionising photon output Q₀ (photons/s) against effective temperature.
+   Interpolated from model atmospheres — Martins, Schaerer & Hillier 2005 for O
+   stars, Sternberg, Hoffmann & Pauldrach 2003 for B. Falls off a cliff below
+   ~25,000 K, which is why only the hottest stars light nebulae up. */
+const QTAB = [
+  [10000, 36.0], [15000, 42.0], [20000, 44.5], [25000, 45.7], [28000, 46.8],
+  [30000, 47.7], [33000, 48.2], [36000, 48.6], [38000, 48.8], [41000, 49.0],
+  [44000, 49.2], [47000, 49.4], [50000, 49.6]
+];
+function logQ(T){
+  if(T<=QTAB[0][0]) return QTAB[0][1] - (QTAB[0][0]-T)/1000;
+  if(T>=QTAB[QTAB.length-1][0]) return QTAB[QTAB.length-1][1];
+  for(let i=0;i<QTAB.length-1;i++){
+    if(T>=QTAB[i][0] && T<=QTAB[i+1][0]){
+      const f=(T-QTAB[i][0])/(QTAB[i+1][0]-QTAB[i][0]);
+      return QTAB[i][1] + f*(QTAB[i+1][1]-QTAB[i][1]);
+    }
+  }
+  return 36;
+}
+/* Strömgren 1939: the ionised bubble stops where recombination balances ionisation.
+   R_S = ( 3 Q₀ / 4π n² α_B )^{1/3} */
+function stromgrenPc(T, n){
+  const Q=Math.pow(10,logQ(T));
+  const r3 = 3*Q/(4*Math.PI*n*n*ALPHA_B);
+  return Math.pow(r3,1/3)/PC_CM;
+}
+/* Rayleigh scattering efficiency ∝ λ⁻⁴ — why reflection nebulae are blue for the
+   same reason the sky is. */
+const rayleigh = nm => Math.pow(550/nm, 4);
+
+const LINES = [
+  {nm:372.7, name:'[O II]',  rel:0.35},
+  {nm:434.0, name:'Hγ',      rel:0.20},
+  {nm:486.1, name:'Hβ',      rel:0.35},
+  {nm:495.9, name:'[O III]', rel:0.55},
+  {nm:500.7, name:'[O III]', rel:1.00},
+  {nm:656.3, name:'Hα',      rel:2.85},   // Balmer decrement Hα/Hβ = 2.85, case B
+  {nm:658.4, name:'[N II]',  rel:0.45}
+];
+
+function nebulaType(T, hasStar){
+  if(!hasStar)   return {k:'dark', name:'Dark nebula',
+    detail:'No nearby star. The cloud is visible only as a hole — it blocks the light of everything behind it.'};
+  if(T >= 25000) return {k:'emission', name:'Emission nebula',
+    detail:'The star floods the gas with photons above 13.6 eV. Hydrogen is ionised, recombines, and glows in its own lines. The red is Hα.'};
+  if(T >= 8000)  return {k:'reflection', name:'Reflection nebula',
+    detail:'Not hot enough to ionise anything. Dust grains scatter the starlight instead, and scatter blue far more efficiently than red.'};
+  return {k:'dark', name:'Dark nebula',
+    detail:'The star is too cool to either ionise the gas or light the dust appreciably. The cloud stays dark.'};
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCENE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const app = boot({
+  cameraPos:new THREE.Vector3(0,18,72), target:new THREE.Vector3(0,0,0),
+  dist:[18,400], near:0.1, far:3000, exposure:0.85,
+  bloom:{strength:0.42, radius:0.6, threshold:0.40}
+});
+const {scene}=app;
+deepField(scene, 700, 1400, 2.2);
+
+/* clumpy cloud — sum of gaussian blobs so it reads as gas, not a ball */
+const NCLOUD=26000;
+const cPos=new Float32Array(NCLOUD*3), cCol=new Float32Array(NCLOUD*3), cR=new Float32Array(NCLOUD);
+{
+  let seed=31;
+  const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff;};
+  const blobs=[];
+  for(let b=0;b<14;b++) blobs.push({
+    x:(rnd()-0.5)*44, y:(rnd()-0.5)*24, z:(rnd()-0.5)*44, s:5+rnd()*11});
+  for(let i=0;i<NCLOUD;i++){
+    const b=blobs[(rnd()*blobs.length)|0];
+    const x=b.x+(rnd()+rnd()+rnd()-1.5)*b.s;
+    const y=b.y+(rnd()+rnd()+rnd()-1.5)*b.s*0.62;
+    const z=b.z+(rnd()+rnd()+rnd()-1.5)*b.s;
+    cPos[i*3]=x; cPos[i*3+1]=y; cPos[i*3+2]=z;
+    cR[i]=Math.sqrt(x*x+y*y+z*z);
+  }
+}
+const cloudGeo=new THREE.BufferGeometry();
+cloudGeo.setAttribute('position',new THREE.BufferAttribute(cPos,3));
+cloudGeo.setAttribute('color',new THREE.BufferAttribute(cCol,3));
+const cloud=new THREE.Points(cloudGeo,new THREE.PointsMaterial({
+  size:1.5,map:starTexture(false),vertexColors:true,transparent:true,opacity:0.55,
+  depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(cloud);
+
+/* the illuminating star */
+const star=new THREE.Points(
+  new THREE.BufferGeometry().setAttribute('position',new THREE.BufferAttribute(new Float32Array(3),3)),
+  new THREE.PointsMaterial({size:16,map:starTexture(true),color:0xffffff,
+    transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(star);
+
+/* the Strömgren sphere, drawn as a ring so the boundary is legible */
+const ringPts=[]; for(let i=0;i<=180;i++){const a=i/180*6.2832;
+  ringPts.push(new THREE.Vector3(Math.cos(a),0,Math.sin(a)));}
+const sRing=new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts),
+  new THREE.LineBasicMaterial({color:0xFF7A9C,transparent:true,opacity:0.55}));
+scene.add(sRing);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+const P={T:38000, n:100, hasStar:true, showRing:true};
+
+const sT=ui.slider({label:'Star temperature  T_eff', min:3000, max:50000, step:250,
+  value:P.T, unit:'K', d:0, on:v=>{P.T=v; update();}});
+const sN=ui.slider({label:'Gas density  n', min:1, max:1e4, value:P.n, log:true,
+  unit:'cm⁻³', fmt:v=>v<1000? v.toFixed(0) : sci(v,1), on:v=>{P.n=v; update();}});
+
+const panel=el('div');
+panel.appendChild(ui.section('Why the colour changes',
+  ui.eq('E > 13.6 eV  ⟺  λ < 91.2 nm   <span class="c">to ionise hydrogen</span>'),
+  ui.eq('R_S = ( 3Q₀ / 4π n² α_B )<sup>1/3</sup>   <span class="c">Strömgren 1939</span>'),
+  ui.note('A nebula has no colour of its own. <b>The star decides.</b> Hot enough to make '+
+          'ultraviolet below 91.2 nm and the gas glows red in Hα. Cooler, and dust merely '+
+          'scatters starlight, which favours blue. No star at all and the cloud is a silhouette.')));
+
+panel.appendChild(ui.section('The star', sT.node,
+  ui.btnRow(
+    ui.button('O5 — 44 000 K',()=>{P.T=44000;sT.set(44000);P.hasStar=true;tS.set(true);update();}),
+    ui.button('B3 — 18 000 K',()=>{P.T=18000;sT.set(18000);P.hasStar=true;tS.set(true);update();}),
+    ui.button('No star',()=>{P.hasStar=false;tS.set(false);update();}))));
+
+const tS=ui.toggle({label:'A star is present', value:true, on:v=>{P.hasStar=v; update();}});
+panel.appendChild(ui.section('The cloud', sN.node, tS.node,
+  ui.toggle({label:'Show the ionisation boundary', value:true, on:v=>{P.showRing=v; update();}}).node,
+  ui.note('Denser gas recombines faster, so the ionised bubble is <b>smaller</b>, not bigger — '+
+          'R_S goes as n<sup>−2/3</sup>.')));
+
+const ro=ui.readout([
+  {id:'type', k:'nebula type', cls:'big'},
+  {id:'cls',  k:'spectral class'},
+  {id:'Q',    k:'ionising photons', tip:'Photons per second above 13.6 eV. Collapses by ten orders of magnitude between an O star and a B star.'},
+  {id:'RS',   k:'Strömgren radius', tip:'The size of the ionised bubble, where ionisation and recombination balance.'},
+  {id:'frac', k:'cloud ionised'},
+  {id:'domi', k:'dominant emission'},
+  {id:'real', k:'real example'}
+]);
+panel.appendChild(ui.section('Readout', ro.node));
+
+panel.appendChild(ui.section('Sources', ui.ref(
+  '<b>Ionisation bubbles:</b> Strömgren 1939, ApJ 89, 526 · '+
+  '<b>O-star ionising output:</b> Martins, Schaerer &amp; Hillier 2005, A&amp;A 436, 1049 · '+
+  '<b>B-star output:</b> Sternberg, Hoffmann &amp; Pauldrach 2003, ApJ 599, 1333 · '+
+  '<b>Case-B recombination, Hα/Hβ = 2.85:</b> Osterbrock &amp; Ferland, <i>AGN²</i>, 2006 · '+
+  '<b>Scattering:</b> Rayleigh 1871, Phil. Mag. 41, 107')));
+app.setPanel(panel);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPECTRUM PLOT
+   ═══════════════════════════════════════════════════════════════════════════ */
+function drawPlot(type){
+  const p=Plot({xmin:350,xmax:700,ymin:0,ymax:3.2,
+    xfmt:v=>v, yfmt:v=>v.toFixed(0)});
+  p.frame('WHAT REACHES YOUR EYE','wavelength  [nm]','relative intensity',
+    [400,500,600,700],[0,1,2,3]);
+
+  if(type==='emission'){
+    LINES.forEach(L=>{
+      const col = L.nm>600? PAL.rust : (L.nm>490&&L.nm<510? PAL.sage : PAL.blue);
+      p.line([[L.nm,0],[L.nm,L.rel]], col, 2.4);
+      if(L.rel>0.5) p.label(L.name, p.tx(L.nm)-8, p.ty(L.rel)-6, col);
+    });
+    p.label('discrete lines — the gas emits, it does not reflect',
+            p.x0+8, p.y0-9, PAL.ink3);
+  } else if(type==='reflection'){
+    const pts=[]; for(let nm=350;nm<=700;nm+=4) pts.push([nm, 0.9*rayleigh(nm)]);
+    p.line(pts, PAL.blue, 2.4);
+    p.label('scattering ∝ λ⁻⁴', p.tx(400)+10, p.ty(2.5), PAL.blue);
+    p.label('smooth continuum, strongly biased to blue', p.x0+8, p.y0-9, PAL.ink3);
+  } else {
+    const pts=[]; for(let nm=350;nm<=700;nm+=4) pts.push([nm, 0.12]);
+    p.line(pts, PAL.ink4, 2.0, [4,3]);
+    p.label('almost nothing — the cloud absorbs and re-emits in the infrared',
+            p.x0+8, p.y0-9, PAL.ink3);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+const SPECTRAL = T => T>=30000?'O' : T>=10000?'B' : T>=7500?'A' : T>=6000?'F' :
+                      T>=5200?'G' : T>=3700?'K' : 'M';
+const EXAMPLE = k => k==='emission' ? 'the Orion Nebula (M42)'
+                   : k==='reflection' ? 'the Pleiades reflection nebulosity'
+                   : 'the Horsehead (Barnard 33)';
+
+function update(){
+  const type=nebulaType(P.T, P.hasStar);
+  const Q=Math.pow(10,logQ(P.T));
+  const RS=stromgrenPc(P.T, P.n);
+  const RS_SCENE=Math.max(0.5, Math.min(60, RS*3.2));   // 1 pc ≈ 3.2 scene units
+
+  // colour every cloud particle by what it is actually doing
+  const c=new THREE.Color();
+  for(let i=0;i<NCLOUD;i++){
+    let r=0,g=0,b=0;
+    if(type.k==='emission'){
+      if(cR[i] < RS_SCENE){                    // inside the ionised bubble → Hα + [O III]
+        const t=cR[i]/RS_SCENE;
+        c.setRGB(1.0, 0.30+0.20*(1-t), 0.42+0.16*t);
+      } else {                                  // outside → neutral, faintly lit
+        c.setRGB(0.20,0.11,0.13);
+      }
+    } else if(type.k==='reflection'){
+      const fall=1/(1+Math.pow(cR[i]/22,2));    // dust lit by an inverse-square field
+      c.setRGB(0.34*fall+0.03, 0.50*fall+0.04, 1.0*fall+0.07);
+    } else {
+      c.setRGB(0.055,0.050,0.062);
+    }
+    cCol[i*3]=c.r; cCol[i*3+1]=c.g; cCol[i*3+2]=c.b;
+  }
+  cloudGeo.attributes.color.needsUpdate=true;
+  cloud.material.opacity = type.k==='dark' ? 0.85 : 0.55;
+
+  star.visible=P.hasStar;
+  if(P.hasStar){
+    // star colour from its temperature, roughly
+    const t=Math.max(0,Math.min(1,(P.T-3000)/47000));
+    star.material.color.setRGB(1-0.35*t, 0.80+0.15*t, 0.55+0.45*t);
+    star.material.size = 10+10*t;
+  }
+  sRing.visible = P.showRing && type.k==='emission';
+  sRing.scale.set(RS_SCENE,1,RS_SCENE);
+
+  ro.set('type', type.name);
+  ro.set('cls', P.hasStar? SPECTRAL(P.T) : '—');
+  ro.set('Q', P.hasStar? sci(Q,2)+' /s' : '—');
+  ro.set('RS', type.k==='emission'? fmt(RS,2)+' pc' : '—');
+  ro.set('frac', type.k==='emission'
+    ? fmt(100*Math.min(1,Math.pow(RS_SCENE/34,3)),1)+' %' : '0 %');
+  ro.set('domi', type.k==='emission'? 'Hα 656.3 nm'
+              : type.k==='reflection'? 'scattered blue continuum' : 'extinction only');
+  ro.set('real', EXAMPLE(type.k));
+
+  app.setCaption(`<b>${type.name}.</b> ${type.detail} `+
+    (type.k==='emission'
+      ? `<span class="cite">Ionised bubble ${fmt(RS,2)} pc across — Strömgren 1939.</span>`
+      : `<span class="cite">Same cloud as the other two. Only the star changed.</span>`));
+
+  drawPlot(type.k);
+}
+
+let t=0;
+app.onFrame(dt=>{ t+=dt; scene.rotation.y=Math.sin(t*0.06)*0.28; });
+app.onThemeChange(update);   // repaint the plot when the theme flips
+update();
+</script>

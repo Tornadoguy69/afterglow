@@ -1,0 +1,38 @@
+{
+  "id": "multiverse",
+  "title": "The Multiverse",
+  "blurb": "Eternal inflation, many-worlds and the string landscape are three different ideas, not one. See precisely why no experiment separates them.",
+  "tier": "speculative",
+  "entry": "index.html",
+  "sources": [
+    {
+      "claim": "Inflation",
+      "cite": "Guth 1981, PRD 23, 347"
+    },
+    {
+      "claim": "Eternal inflation",
+      "cite": "Linde 1983, Phys. Lett. B 129, 177; Vilenkin 1983, PRD 27, 2848"
+    },
+    {
+      "claim": "Many worlds",
+      "cite": "Everett 1957, Rev. Mod. Phys. 29, 454"
+    },
+    {
+      "claim": "String landscape",
+      "cite": "Bousso & Polchinski 2000, JHEP 06, 006; Susskind 2003, hep-th/0302219"
+    },
+    {
+      "claim": "Bubble collision search — no detection",
+      "cite": "Feeney et al. 2011, PRL 107, 071301"
+    },
+    {
+      "claim": "Testability critique",
+      "cite": "Ellis & Silk 2014, Nature 516, 321"
+    }
+  ],
+  "open": [
+    "None of the three is currently testable. This is the entire point of the page and of its badge.",
+    "The bubble geometry is schematic: nucleation rate, bubble wall dynamics and the true measure problem are not modelled.",
+    "The one real observational test — a CMB bubble-collision signature — has been performed and found nothing."
+  ]
+}

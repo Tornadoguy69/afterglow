@@ -1,0 +1,294 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Little Red Dots — Afterglow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../engine/style.css">
+<style>
+  .match{display:flex;align-items:baseline;gap:9px;margin-bottom:7px;font-size:12px;line-height:1.45}
+  .match i{flex:none;width:15px;font-style:normal;font-weight:600;font-family:var(--mono);font-size:12px}
+  .match .y{color:var(--sage)} .match .n{color:var(--rust)} .match .q{color:var(--kraft)}
+  .match span{color:var(--ink-2)}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <a class="back" href="../../index.html">← All topics</a>
+      <h1>The Little Red Dots</h1>
+      <span class="tier tier-active">Active research</span>
+      <span class="sub">300+ objects nobody predicted</span>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">The V-shaped spectrum</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset" title="Snap back">⤢</button>
+          <button class="ib" id="insMin" title="Collapse">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture, deepField } from '../../engine/engine.js';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WHAT IS ACTUALLY OBSERVED.
+   These are the constraints every proposal has to satisfy. They are listed
+   separately from the models on purpose — the observations are not in dispute,
+   only the explanation is.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const FACTS = [
+  {id:'red',   label:'Very red in the rest-frame optical'},
+  {id:'blue',  label:'…but blue in the ultraviolet — a "V"-shaped spectrum'},
+  {id:'compact',label:'Unresolved: smaller than about 100 parsecs'},
+  {id:'broad', label:'Broad Hα, roughly 1000–3000 km/s'},
+  {id:'xray',  label:'No X-rays, even in deep stacks'},
+  {id:'novar', label:'Little or no variability'},
+  {id:'many',  label:'Abundant at z ≈ 4–8; over 300 found since 2024'},
+  {id:'comp',  label:'80% of the brightest have a blue UV companion'}
+];
+
+/* Each model's scorecard: y = explains it, n = contradicts it, q = unclear.
+   Judgements follow the papers cited at the foot of the panel. */
+const MODELS = {
+  'Direct-collapse seed':{
+    key:'dcbh',
+    what:'A massive black hole seed formed straight out of collapsing pristine gas, skipping the stellar-remnant route entirely. It would explain how billion-solar-mass holes exist so early.',
+    score:{red:'y',blue:'q',compact:'y',broad:'y',xray:'n',novar:'n',many:'q',comp:'y'},
+    cite:'Direct-collapse interpretation — see phys.org 2026-02 summary and references therein'},
+  'Super-Eddington bursts':{
+    key:'edd',
+    what:'An ordinary black hole caught feeding above the classical limit. Rare, violent, short-lived episodes — which would explain why we see so many at once only if the bursts are common.',
+    score:{red:'y',blue:'q',compact:'y',broad:'y',xray:'q',novar:'q',many:'y',comp:'q'},
+    cite:'Feeding-burst models, 2026'},
+  'Black hole star':{
+    key:'bhstar',
+    what:'A black hole buried inside a dense envelope of gas so thick it radiates like a giant stellar atmosphere. The envelope would absorb the X-rays and smooth out the variability.',
+    score:{red:'y',blue:'y',compact:'y',broad:'y',xray:'y',novar:'y',many:'q',comp:'q'},
+    cite:'"Black hole star" interpretation, 2026'},
+  'Supermassive first stars':{
+    key:'star',
+    what:'Not black holes at all — the universe\'s first generation of enormous, short-lived stars, caught just before they collapse.',
+    score:{red:'y',blue:'q',compact:'y',broad:'n',xray:'y',novar:'y',many:'n',comp:'q'},
+    cite:'Supermassive-star interpretation, 2026'}
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCENE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const app = boot({
+  cameraPos:new THREE.Vector3(0,10,52), target:new THREE.Vector3(0,0,0),
+  dist:[14,300], near:0.1, far:2000, exposure:0.86,
+  bloom:{strength:0.5, radius:0.6, threshold:0.32}
+});
+const {scene}=app;
+deepField(scene, 600, 1500, 2.2);
+
+/* central source */
+const core=new THREE.Points(
+  new THREE.BufferGeometry().setAttribute('position',new THREE.BufferAttribute(new Float32Array(3),3)),
+  new THREE.PointsMaterial({size:26,map:starTexture(true),color:0xFF7A4A,
+    transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(core);
+
+/* the shroud — dense gas envelope, thickness depends on the model */
+const NS=16000;
+const sBase=new Float32Array(NS*3), sPos=new Float32Array(NS*3), sCol=new Float32Array(NS*3);
+{
+  let seed=41;
+  const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff;};
+  for(let i=0;i<NS;i++){
+    const ct=2*rnd()-1, st=Math.sqrt(1-ct*ct), ph=rnd()*6.2832;
+    const r=0.35+0.65*Math.pow(rnd(),0.4);
+    sBase[i*3]=r*st*Math.cos(ph); sBase[i*3+1]=r*ct*0.85; sBase[i*3+2]=r*st*Math.sin(ph);
+  }
+}
+const sGeo=new THREE.BufferGeometry();
+sGeo.setAttribute('position',new THREE.BufferAttribute(sPos,3));
+sGeo.setAttribute('color',new THREE.BufferAttribute(sCol,3));
+const shroud=new THREE.Points(sGeo,new THREE.PointsMaterial({
+  size:2.4,map:starTexture(false),vertexColors:true,transparent:true,opacity:0.5,
+  depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(shroud);
+
+/* the blue UV companion seen next to most of the bright ones */
+const compGeo=new THREE.BufferGeometry();
+compGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array([16,3.5,-4]),3));
+const companion=new THREE.Points(compGeo,new THREE.PointsMaterial({
+  size:11,map:starTexture(true),color:0x8FB8FF,transparent:true,opacity:1,
+  depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(companion);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+const P={model:'Black hole star', showComp:true};
+
+const panel=el('div');
+panel.appendChild(ui.section('What JWST found',
+  ui.note('In 2024 JWST turned up a population of <b>compact, extremely red objects</b> at '+
+          'redshifts where the universe was only a few hundred million years old. Nobody '+
+          'predicted them. Over 300 are now known and there is still no agreed explanation.'),
+  ui.note('They show broad emission lines — normally the signature of gas whipping around a '+
+          'black hole — but <b>no X-rays</b>, which an accreting black hole of that mass should '+
+          'produce. That combination is the problem.')));
+
+const factsBox=el('div');
+FACTS.forEach(f=>{
+  const d=el('div','match');
+  d.append(el('i',null,'•'), el('span',null,f.label));
+  factsBox.appendChild(d);
+});
+panel.appendChild(ui.section('The observations — not in dispute', factsBox));
+
+panel.appendChild(ui.section('Proposed explanations',
+  ui.btnRow(...Object.keys(MODELS).map(k=>ui.button(k,()=>{P.model=k; update();}))),
+  ui.note('All four are live in the 2026 literature. Pick one and see which observations it '+
+          'accounts for and which it does not.')));
+
+const scoreBox=el('div');
+panel.appendChild(ui.section('Does it fit?', scoreBox));
+
+const ro=ui.readout([
+  {id:'model', k:'model', cls:'big'},
+  {id:'fits',  k:'observations explained'},
+  {id:'fails', k:'observations contradicted', cls:'hi'},
+  {id:'unc',   k:'unclear'},
+  {id:'z',     k:'typical redshift'},
+  {id:'size',  k:'upper limit on size'},
+  {id:'n',     k:'known objects'}
+]);
+panel.appendChild(ui.section('Scorecard', ro.node));
+
+panel.appendChild(ui.section('Why this page has an "active" badge', ui.note(
+  'Nothing here is settled. Two years after discovery there is no consensus, and the four '+
+  'explanations make genuinely different claims about what these objects are. '+
+  '<b>Expect this page to be wrong within a year</b> — that is what an open problem looks like '+
+  'while it is still open.')));
+
+panel.appendChild(ui.section('Sources', ui.ref(
+  '<b>Discovery and abundance:</b> Matthee et al. 2024, ApJ 963, 129 · '+
+  '<b>Direct-collapse interpretation:</b> phys.org summary, Feb 2026 · '+
+  '<b>Super-Eddington feeding:</b> phys.org summary, Jun 2026 · '+
+  '<b>Blue UV companions (36 of 83; &gt;80% of the brightest):</b> Live Science, 2026 · '+
+  '<b>Black-hole-star interpretation:</b> Space.com / CfA summaries, 2026 · '+
+  'Research notes: <code>research/JWST_AND_LIFE.md</code>')));
+app.setPanel(panel);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPECTRUM — the V shape is the defining signature.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function drawPlot(){
+  const p=Plot({xmin:0.1,xmax:1.0,ymin:-0.15,ymax:1.25,
+    xfmt:v=>v.toFixed(1), yfmt:v=>v.toFixed(1)});
+  p.frame('REST-FRAME SPECTRUM','wavelength  [µm]','relative flux',
+    [0.2,0.4,0.6,0.8,1.0],[0,0.5,1.0]);
+
+  // the observed V: blue UV, a minimum around 0.3 µm, then rising steeply to the red
+  const obs=[];
+  for(let w=0.1;w<=1.0;w+=0.01){
+    const uv = 0.55*Math.exp(-Math.pow((w-0.10)/0.10,2));
+    const red= 1.05/(1+Math.exp(-(w-0.48)/0.10));
+    obs.push([w, 0.10+uv+red*0.85]);
+  }
+  p.line(obs, PAL.ink, 2.6);
+  p.label('observed', p.tx(0.78), p.ty(1.02), PAL.ink);
+
+  // Hα, broadened — the line that says "black hole" and the reason this is a puzzle
+  p.line([[0.6563,0.30],[0.6563,1.12]], PAL.rust, 2.2);
+  p.label('Hα (broad)', p.tx(0.6563)-52, p.ty(1.18), PAL.rust);
+
+  const m=MODELS[P.model];
+  if(m.key==='star'){                   // a stellar atmosphere has no broad line
+    const s=[]; for(let w=0.1;w<=1.0;w+=0.01) s.push([w, 0.15+0.85/(1+Math.exp(-(w-0.42)/0.13))]);
+    p.line(s, PAL.blue, 2.0, [5,3]);
+    p.label('supermassive star', p.tx(0.30), p.ty(0.72), PAL.blue);
+  } else if(m.key==='bhstar'){
+    const s=[]; for(let w=0.1;w<=1.0;w+=0.01){
+      const uv=0.50*Math.exp(-Math.pow((w-0.10)/0.10,2));
+      s.push([w, 0.11+uv+0.86/(1+Math.exp(-(w-0.47)/0.10))*0.85]);
+    }
+    p.line(s, PAL.sage, 2.0, [5,3]);
+    p.label('black hole star', p.tx(0.30), p.ty(0.55), PAL.sage);
+  } else {
+    const s=[]; for(let w=0.1;w<=1.0;w+=0.01) s.push([w, 0.08+1.0/(1+Math.exp(-(w-0.44)/0.09))*0.95]);
+    p.line(s, PAL.kraft, 2.0, [5,3]);
+    p.label('accreting black hole', p.tx(0.28), p.ty(0.40), PAL.kraft);
+  }
+  p.label('the blue upturn is what no simple dusty model reproduces',
+          p.x0+8, p.y0-9, PAL.ink3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+function update(){
+  const m=MODELS[P.model];
+  const SY={y:['y','✓'],n:['n','✗'],q:['q','?']};
+
+  scoreBox.innerHTML='';
+  let fits=0, fails=0, unc=0;
+  FACTS.forEach(f=>{
+    const v=m.score[f.id]; const [cls,mark]=SY[v];
+    if(v==='y') fits++; else if(v==='n') fails++; else unc++;
+    const d=el('div','match');
+    const ic=el('i',cls,mark);
+    d.append(ic, el('span',null,f.label));
+    scoreBox.appendChild(d);
+  });
+
+  // scene: how much gas is wrapped around the source
+  const thick = m.key==='bhstar' ? 1.0 : m.key==='star' ? 0.55 : 0.35;
+  const c=new THREE.Color();
+  for(let i=0;i<NS;i++){
+    const s = 5.5 + 5.5*thick;
+    sPos[i*3]=sBase[i*3]*s; sPos[i*3+1]=sBase[i*3+1]*s; sPos[i*3+2]=sBase[i*3+2]*s;
+    const r=Math.sqrt(sBase[i*3]**2+sBase[i*3+1]**2+sBase[i*3+2]**2);
+    c.setRGB(1.0, 0.34+0.20*(1-r), 0.22+0.14*(1-r));
+    sCol[i*3]=c.r; sCol[i*3+1]=c.g; sCol[i*3+2]=c.b;
+  }
+  sGeo.attributes.position.needsUpdate=true;
+  sGeo.attributes.color.needsUpdate=true;
+  shroud.material.opacity = 0.28+0.42*thick;
+  core.material.color.setHex(m.key==='star' ? 0xFFC98A : 0xFF7A4A);
+  core.material.size = m.key==='star' ? 30 : 24;
+  companion.visible = P.showComp;
+
+  ro.set('model', P.model);
+  ro.set('fits',  fits+' of '+FACTS.length);
+  ro.set('fails', fails===0 ? '<span class="good">none</span>' : fails+' — '+
+    FACTS.filter(f=>m.score[f.id]==='n').map(f=>f.id).join(', '));
+  ro.set('unc', unc);
+  ro.set('z', '4 – 8');
+  ro.set('size', '&lt; 100 pc');
+  ro.set('n', '300+ since 2024');
+
+  app.setCaption(`<b>${P.model}.</b> ${m.what} `+
+    (fails>0
+      ? `<span class="cite">Contradicts ${fails} of the ${FACTS.length} observations.</span>`
+      : `<span class="cite">Currently the only one of the four that contradicts none of them — which is not the same as being right.</span>`));
+
+  drawPlot();
+}
+
+let t=0;
+app.onFrame(dt=>{ t+=dt; scene.rotation.y=Math.sin(t*0.07)*0.3; });
+app.onThemeChange(update);   // repaint the plot when the theme flips
+update();
+</script>

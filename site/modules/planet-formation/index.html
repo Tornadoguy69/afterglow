@@ -1,0 +1,311 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Planet Formation — Afterglow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../engine/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <a class="back" href="../../index.html">← All topics</a>
+      <h1>Planet Formation</h1>
+      <span class="tier tier-established">Established</span>
+      <span class="sub">dust to worlds — with one step nobody fully understands</span>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">The metre-size barrier</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset" title="Snap back">⤢</button>
+          <button class="ib" id="insMin" title="Collapse">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture, deepField } from '../../engine/engine.js';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHYSICS
+   ═══════════════════════════════════════════════════════════════════════════ */
+const AU=1.496e11, YR=3.156e7, MEARTH=5.972e24;
+
+/* Passively heated disk: T(r) = 280 K (r/AU)^(-1/2) — Hayashi 1981 */
+const diskT = r => 280/Math.sqrt(r);
+/* Water ice condenses at ~170 K, which puts the snow line at 2.7 AU */
+const SNOW_T=170;
+const snowLine = () => Math.pow(280/SNOW_T, 2);
+/* Minimum-mass solar nebula surface density: Σ = 1700 g/cm² (r/AU)^(-3/2) */
+const sigmaGas = r => 1700*Math.pow(r,-1.5);
+/* Solids get ~4× denser beyond the snow line, once water can freeze out */
+const sigmaSolid = r => (r<snowLine()? 7.1 : 30)*Math.pow(r,-1.5);
+
+const vKep = r => Math.sqrt(6.674e-11*1.989e30/(r*AU));
+
+/* Radial drift — Weidenschilling 1977.
+   A grain feels a headwind because the gas is pressure-supported and orbits slightly
+   slower. Drift peaks when the Stokes number is 1, which at 1 AU is roughly a metre.
+   Those boulders spiral into the star in ~100 years, far faster than they can grow. */
+const ETA=0.0025;
+function stokes(sizeM, r){
+  const rhoS=1500;                                   // grain density, kg/m³
+  const sig=sigmaGas(r)*10;                          // g/cm² → kg/m²
+  return Math.PI*rhoS*sizeM/(2*sig);
+}
+function driftYears(sizeM, r){
+  const St=stokes(sizeM,r);
+  const v=2*ETA*vKep(r)*St/(1+St*St);
+  return v<=0 ? Infinity : (r*AU)/v/YR;
+}
+/* Isolation mass — how big a core can get by sweeping its own feeding zone.
+   M_iso = (2π b r² Σ)^{3/2} / (3 M_*)^{1/2},  b ≈ 10 Hill radii */
+function isolationMass(r){
+  const b=10, Ms=1.989e30;
+  const S=sigmaSolid(r)*10;
+  const M=Math.pow(2*Math.PI*b*Math.pow(r*AU,2)*S, 1.5)/Math.sqrt(3*Ms);
+  return M/MEARTH;
+}
+
+const STAGES = [
+  {t:0,      size:1e-6,  name:'Dust grains',
+   what:'Micron-sized silicate and carbon grains, inherited from the interstellar medium. They stick on contact via van der Waals forces.'},
+  {t:0.18,   size:1e-2,  name:'Pebbles',
+   what:'Centimetre aggregates, fluffy and easily broken. Growth so far is uncontroversial — it has been reproduced in the laboratory.'},
+  {t:0.36,   size:1,     name:'The metre-size barrier',
+   what:'Here growth should stop. Collisions at this size fragment rather than stick, and radial drift is at its maximum — these boulders spiral into the star in about a century.'},
+  {t:0.54,   size:1e4,   name:'Planetesimals',
+   what:'Kilometre bodies, held together by their own gravity. The streaming instability — grains clumping and collapsing collectively — is the leading explanation for how the barrier is crossed.'},
+  {t:0.75,   size:1e6,   name:'Protoplanets',
+   what:'Runaway then oligarchic growth. The largest body in each feeding zone sweeps up the rest.'},
+  {t:1.0,    size:1e7,   name:'Planets',
+   what:'Beyond the snow line, cores above ~10 Earth masses capture gas and run away into giants. Inside it, there was never enough solid material.'}
+];
+const stageAt = t => { let s=STAGES[0]; for(const x of STAGES) if(t>=x.t) s=x; return s; };
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCENE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const app = boot({
+  cameraPos:new THREE.Vector3(0,58,96), target:new THREE.Vector3(0,0,0),
+  dist:[25,600], near:0.5, far:3000, exposure:0.82,
+  bloom:{strength:0.36, radius:0.55, threshold:0.45}
+});
+const {scene}=app;
+deepField(scene, 900, 1100, 2.2);
+
+const AU_UNIT=7.0;                                   // scene units per AU
+const R_IN=0.35, R_OUT=12;                           // AU
+
+const ND=30000;
+const dR=new Float32Array(ND), dTh=new Float32Array(ND), dY=new Float32Array(ND);
+const dPos=new Float32Array(ND*3), dCol=new Float32Array(ND*3);
+{
+  let seed=17;
+  const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff;};
+  for(let i=0;i<ND;i++){
+    // surface density ∝ r^-3/2  →  sample r from its cumulative distribution
+    const u=rnd();
+    dR[i]=Math.pow(Math.pow(R_IN,-0.5)*(1-u)+Math.pow(R_OUT,-0.5)*u, -2);
+    dTh[i]=rnd()*6.2832;
+    dY[i]=(rnd()+rnd()-1)*0.05*dR[i];               // flared, thin
+  }
+}
+const dGeo=new THREE.BufferGeometry();
+dGeo.setAttribute('position',new THREE.BufferAttribute(dPos,3));
+dGeo.setAttribute('color',new THREE.BufferAttribute(dCol,3));
+const disk=new THREE.Points(dGeo,new THREE.PointsMaterial({
+  size:1.5,map:starTexture(false),vertexColors:true,transparent:true,opacity:0.7,
+  depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(disk);
+
+const star=new THREE.Points(
+  new THREE.BufferGeometry().setAttribute('position',new THREE.BufferAttribute(new Float32Array(3),3)),
+  new THREE.PointsMaterial({size:22,map:starTexture(true),color:0xFFE7B8,
+    transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(star);
+
+function circle(color,op,w){
+  const p=[]; for(let i=0;i<=200;i++){const a=i/200*6.2832; p.push(new THREE.Vector3(Math.cos(a),0,Math.sin(a)));}
+  const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),
+    new THREE.LineBasicMaterial({color,transparent:true,opacity:op}));
+  scene.add(l); return l;
+}
+const snowRing=circle(0x8FD0E8,0.75);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+const P={t:0.0, r:1.0, play:false};
+
+const sT=ui.slider({label:'Growth stage', min:0, max:1, step:0.002, value:0,
+  fmt:v=>stageAt(v).name, on:v=>{P.t=v; P.play=false; playBtn.textContent='▶  Grow'; update();}});
+const playBtn=ui.button('▶  Grow',()=>{
+  P.play=!P.play; playBtn.textContent=P.play?'❚❚  Pause':'▶  Grow';});
+const sR=ui.slider({label:'Orbital radius  r', min:0.3, max:12, step:0.05, value:1,
+  unit:'AU', d:2, on:v=>{P.r=v; update();}});
+
+const panel=el('div');
+panel.appendChild(ui.section('Where the ice line falls',
+  ui.eq('T(r) = 280 K · (r / AU)<sup>−1/2</sup>   <span class="c">Hayashi 1981</span>'),
+  ui.eq('T = 170 K  ⟹  r = 2.7 AU   <span class="c">water freezes</span>'),
+  ui.note('Beyond 2.7 AU water is solid, and the amount of solid material available jumps '+
+          'by roughly four times. <b>That single line is why the inner planets are small and '+
+          'rocky and the outer ones are enormous.</b>')));
+
+panel.appendChild(ui.section('Growth', sT.node, ui.btnRow(playBtn), sR.node));
+
+const ro=ui.readout([
+  {id:'stage',k:'stage', cls:'big'},
+  {id:'size', k:'typical body size'},
+  {id:'T',    k:'temperature at r'},
+  {id:'snow', k:'snow line'},
+  {id:'side', k:'this orbit is'},
+  {id:'sig',  k:'solid surface density'},
+  {id:'drift',k:'time to spiral into the star', cls:'hi',
+   tip:'Radial drift timescale for a body of this size at this radius. The minimum is the metre-size barrier.'},
+  {id:'iso',  k:'largest core that can form here'},
+  {id:'fate', k:'what forms here'}
+]);
+panel.appendChild(ui.section('At this radius', ro.node));
+
+panel.appendChild(ui.section('The unresolved step', ui.note(
+  'Growth from dust to pebbles is understood and reproducible in the lab. Growth from '+
+  'planetesimals to planets is understood. <b>The step between them is not fully solved.</b> '+
+  'At around a metre, collisions fragment rather than stick, and radial drift is at its '+
+  'fastest — those boulders should fall into the star long before they can grow.'),
+  ui.note('The streaming instability, where solids clump collectively and collapse under their '+
+  'own gravity, is the leading answer and works well in simulations. It is not yet a settled '+
+  'account of every disk.'),
+  ui.note('<b>A second gap worth noticing.</b> Set the radius to 5 AU. The isolation mass there '+
+  'comes out around 2 Earth masses — but Jupiter\'s core is thought to be nearer ten, and it had '+
+  'to assemble before the gas disk dispersed. Classical core accretion is simply too slow. '+
+  '<b>Pebble accretion</b>, where a core sweeps up drifting centimetre grains far more '+
+  'efficiently than it sweeps up planetesimals, is how the field currently closes that gap.')));
+
+panel.appendChild(ui.section('Sources', ui.ref(
+  '<b>Disk model:</b> Hayashi 1981, Prog. Theor. Phys. Suppl. 70, 35 · '+
+  '<b>Radial drift:</b> Weidenschilling 1977, MNRAS 180, 57 · '+
+  '<b>Isolation mass:</b> Lissauer 1993, ARA&amp;A 31, 129 · '+
+  '<b>Core accretion:</b> Pollack et al. 1996, Icarus 124, 62 · '+
+  '<b>Streaming instability:</b> Youdin &amp; Goodman 2005, ApJ 620, 459; Johansen et al. 2007, Nature 448, 1022 · '+
+  '<b>Pebble accretion:</b> Lambrechts &amp; Johansen 2012, A&amp;A 544, A32 · '+
+  '<b>Disk imaging:</b> ALMA Partnership 2015, ApJL 808, L3 (HL Tau)')));
+app.setPanel(panel);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLOT — drift timescale against body size. The dip is the barrier.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function drawPlot(){
+  const p=Plot({xmin:-6, xmax:5, ymin:1, ymax:9,
+    xfmt:v=>v===0?'1 m':'10'+sup(v), yfmt:v=>'10'+sup(v)});
+  p.frame('HOW LONG BEFORE IT FALLS INTO THE STAR','body size  [m]','drift time  [years]',
+    [-6,-4,-2,0,2,4],[2,4,6,8]);
+
+  const pts=[];
+  for(let l=-6;l<=5;l+=0.08){
+    const s=Math.pow(10,l), y=driftYears(s,P.r);
+    if(isFinite(y)) pts.push([l, Math.log10(y)]);
+  }
+  p.line(pts, PAL.clay, 2.4);
+
+  // disk lifetime — a few million years, from infrared surveys of young clusters
+  p.hline(Math.log10(3e6), PAL.rust, [5,3]);
+  p.label('disk lifetime ~3 Myr', p.x0+8, p.ty(Math.log10(3e6))-6, PAL.rust);
+
+  // where the minimum actually sits, found rather than asserted
+  let best=1e99, bl=0;
+  for(let l=-6;l<=5;l+=0.02){ const y=driftYears(Math.pow(10,l),P.r);
+    if(y<best){best=y; bl=l;} }
+  p.marker(bl, Math.log10(best), PAL.ink, 4.5);
+  p.label('fastest drift: '+fmt(best,0)+' yr', p.tx(bl)+8, p.ty(Math.log10(best))+4, PAL.ink);
+
+  const cur=Math.log10(stageAt(P.t).size);
+  p.vline(cur, PAL.kraft, [2,3]);
+  p.label('anything in this dip is lost', p.x0+8, p.y0-9, PAL.ink3);
+}
+const sup = n => String(Math.round(n)).replace('-','⁻').replace(/\d/g,d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+function sizeLabel(m){
+  if(m<1e-3) return sci(m*1e6,1)+' µm';
+  if(m<1)    return fmt(m*100,1)+' cm';
+  if(m<1e3)  return fmt(m,1)+' m';
+  return sci(m/1000,2)+' km';
+}
+
+function update(){
+  const st=stageAt(P.t), snow=snowLine();
+  const T=diskT(P.r), inner=P.r<snow;
+  const drift=driftYears(st.size, P.r), iso=isolationMass(P.r);
+
+  // clump the disk into bigger, sparser bodies as growth proceeds
+  const clump=Math.pow(P.t,1.6);
+  const c=new THREE.Color();
+  for(let i=0;i<ND;i++){
+    const r=dR[i];
+    const th=dTh[i] + 0.6/Math.pow(r,1.5);          // Keplerian shear, frozen
+    dPos[i*3]=Math.cos(th)*r*AU_UNIT;
+    dPos[i*3+1]=dY[i]*AU_UNIT;
+    dPos[i*3+2]=Math.sin(th)*r*AU_UNIT;
+    // ice beyond the snow line reads blue-white; rock inside reads warm
+    if(r<snow) c.setRGB(1.0, 0.62-0.12*clump, 0.36);
+    else       c.setRGB(0.68+0.20*clump, 0.86, 1.0);
+    dCol[i*3]=c.r; dCol[i*3+1]=c.g; dCol[i*3+2]=c.b;
+  }
+  dGeo.attributes.position.needsUpdate=true;
+  dGeo.attributes.color.needsUpdate=true;
+  // fewer, larger bodies as they merge
+  dGeo.setDrawRange(0, Math.max(400, Math.round(ND*(1-0.985*clump))));
+  disk.material.size = 1.5 + 7*clump;
+  disk.material.opacity = 0.7 - 0.15*clump;
+
+  snowRing.scale.set(snow*AU_UNIT,1,snow*AU_UNIT);
+
+  ro.set('stage', st.name);
+  ro.set('size', sizeLabel(st.size));
+  ro.set('T', fmt(T,0)+' K');
+  ro.set('snow', fmt(snow,2)+' AU');
+  ro.set('side', inner
+    ? '<span class="warn">inside — water is vapour</span>'
+    : '<span class="good">outside — water is ice</span>');
+  ro.set('sig', fmt(sigmaSolid(P.r),1)+' g/cm²');
+  ro.set('drift', drift>1e9? '&gt; 10⁹ yr (safe)' : fmt(drift,0)+' years'
+    + (drift<3e6 ? ' <span class="warn">&lt; disk lifetime</span>' : ''));
+  ro.set('iso', fmt(iso,2)+' M⊕');
+  ro.set('fate', inner
+    ? (iso>0.5? 'a rocky planet' : 'asteroids and small bodies')
+    : (iso>10 ? 'a gas giant — the core can capture gas'
+     : iso>1  ? 'an ice giant, or a gas giant with pebble accretion'
+     : 'comets and small bodies'));
+
+  app.setCaption(`<b>${st.name}.</b> ${st.what} `+
+    `<span class="cite">At ${fmt(P.r,2)} AU: ${fmt(T,0)} K, ${inner?'inside':'outside'} the snow line.</span>`);
+
+  drawPlot();
+}
+
+app.onFrame(dt=>{
+  if(P.play){ P.t=Math.min(1,P.t+dt*0.09);
+    if(P.t>=1){ P.t=0; } sT.set(P.t); update(); }
+});
+app.onThemeChange(update);   // repaint the plot when the theme flips
+update();
+</script>

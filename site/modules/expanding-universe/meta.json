@@ -1,0 +1,33 @@
+{
+  "id": "expanding-universe",
+  "title": "The Expanding Universe",
+  "blurb": "Stand on any galaxy you like and every other one still recedes from you. Move yourself and refit — the answer does not change.",
+  "tier": "established",
+  "entry": "index.html",
+  "sources": [
+    {
+      "claim": "Hubble law",
+      "cite": "Hubble 1929, PNAS 15, 168"
+    },
+    {
+      "claim": "Accelerating expansion",
+      "cite": "Riess et al. 1998, AJ 116, 1009; Perlmutter et al. 1999, ApJ 517, 565"
+    },
+    {
+      "claim": "H0 = 67.4",
+      "cite": "Planck Collaboration VI 2020, A&A 641, A6"
+    },
+    {
+      "claim": "H0 = 73.0",
+      "cite": "Riess et al. 2022, ApJL 934, L7"
+    },
+    {
+      "claim": "Superluminal recession is permitted",
+      "cite": "Davis & Lineweaver 2004, PASA 21, 97"
+    }
+  ],
+  "open": [
+    "The Hubble tension is unresolved at roughly 5 sigma. Both values are shown; neither is presented as correct.",
+    "Peculiar velocities are omitted — real galaxies scatter about the Hubble flow."
+  ]
+}

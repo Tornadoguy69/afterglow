@@ -1,0 +1,346 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Black Holes — Afterglow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../engine/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <a class="back" href="../../index.html">← All topics</a>
+      <h1>Black Holes</h1>
+      <span class="tier tier-established">Established</span>
+      <span class="sub">light paths integrated in the Schwarzschild metric</span>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">Effective potential for light</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset" title="Snap back">⤢</button>
+          <button class="ib" id="insMin" title="Collapse">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci } from '../../engine/engine.js';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHYSICS.  Everything scales with one number: the Schwarzschild radius.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const G=6.674e-11, C=2.998e8, MSUN=1.989e30, HBAR=1.0546e-34, KB=1.381e-23;
+const KM_AU=1.496e8, KM_LY=9.461e12;
+
+const rs_km      = M => 2*G*(M*MSUN)/(C*C)/1000;      // = 2.953 km per solar mass
+const photonSph  = 1.5;                                // × r_s
+const ISCO       = 3.0;                                // × r_s, non-spinning
+const SHADOW     = 3*Math.sqrt(3)/2;                   // ≈ 2.598 × r_s, apparent radius
+/* Gravitational time dilation: dτ/dt = √(1 − r_s/r) */
+const dilation   = rOverRs => rOverRs<=1 ? 0 : Math.sqrt(1 - 1/rOverRs);
+/* Tidal acceleration across a height h at the horizon: Δg = h c⁶ / 4G²M² */
+const tidalAtHorizon = (M,h=2) => h*Math.pow(C,6)/(4*G*G*Math.pow(M*MSUN,2));
+/* Hawking 1974: T = ħc³ / 8πGMk_B  →  6.17e-8 K for one solar mass */
+const hawkingK   = M => HBAR*Math.pow(C,3)/(8*Math.PI*G*(M*MSUN)*KB);
+/* Page 1976 evaporation time ≈ 2.1e67 yr (M/M☉)³ */
+const evaporateYr= M => 2.1e67*Math.pow(M,3);
+
+const PRESETS = {
+  'Stellar':      {M:10,      note:'A typical collapsed massive star.'},
+  'Cygnus X-1':   {M:21.2,    note:'The first object widely accepted as a black hole, 7200 ly away.'},
+  'Sgr A*':       {M:4.297e6, note:'The Milky Way\'s centre. Imaged by the Event Horizon Telescope in 2022.'},
+  'M87*':         {M:6.5e9,   note:'Imaged in 2019 — the first picture of a black hole ever taken.'}
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RENDER.  A fullscreen quad; every pixel integrates a null geodesic.
+   In Schwarzschild geometry, with u = 1/r, a light ray obeys
+       d²u/dφ² + u = (3/2) r_s u²
+   The right-hand term is the entire difference from Newtonian gravity, and it is
+   what produces the photon ring. Distances below are in units of r_s.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const app = boot({
+  cameraPos:new THREE.Vector3(0,4.2,17), target:new THREE.Vector3(0,0,0),
+  dist:[4,120], near:0.01, far:1000, exposure:0.95,
+  bloom:{strength:0.55, radius:0.6, threshold:0.30}
+});
+const {scene,camera} = app;
+
+const uni = {
+  uCam:{value:new THREE.Vector3()}, uRight:{value:new THREE.Vector3()},
+  uUp:{value:new THREE.Vector3()},  uFwd:{value:new THREE.Vector3()},
+  uTanHalf:{value:0.4}, uAspect:{value:1.8},
+  uDiskOn:{value:1}, uDiskIn:{value:ISCO}, uDiskOut:{value:14.0},
+  uTime:{value:0}, uSteps:{value:180}
+};
+
+const quad = new THREE.Mesh(new THREE.PlaneGeometry(2,2), new THREE.ShaderMaterial({
+  uniforms:uni, depthWrite:false, depthTest:false,
+  vertexShader:`varying vec2 vUv;
+    void main(){ vUv=uv; gl_Position=vec4(position.xy,0.999,1.0); }`,
+  fragmentShader:`
+    precision highp float;
+    varying vec2 vUv;
+    uniform vec3 uCam,uRight,uUp,uFwd;
+    uniform float uTanHalf,uAspect,uDiskOn,uDiskIn,uDiskOut,uTime,uSteps;
+
+    float hash(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
+    float noise(vec3 p){
+      vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+      return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),
+                     mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
+                 mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),
+                     mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);
+    }
+    /* Procedural sky: faint nebulosity plus point stars. Lensing is only legible
+       against a background with structure in it. */
+    vec3 sky(vec3 d){
+      float n1=noise(d*3.0), n2=noise(d*7.0+13.0), n3=noise(d*17.0-5.0);
+      vec3 neb = mix(vec3(0.020,0.024,0.045), vec3(0.10,0.055,0.085), smoothstep(0.45,0.95,n1));
+      neb += vec3(0.055,0.030,0.015)*smoothstep(0.55,1.0,n2);
+      neb += vec3(0.010,0.030,0.055)*smoothstep(0.60,1.0,n3);
+      vec3 g=floor(d*220.0);
+      float s=hash(g);
+      float star = s>0.9975 ? pow((s-0.9975)/0.0025,1.5) : 0.0;
+      vec3 tint = mix(vec3(1.0,0.85,0.65), vec3(0.75,0.85,1.0), hash(g+7.0));
+      return neb + tint*star*2.4;
+    }
+    /* Accretion disk: temperature rises inward as r^-3/4 (Shakura–Sunyaev). */
+    vec3 diskColour(float r, float phi){
+      float t = pow(uDiskIn/max(r,uDiskIn), 0.75);
+      vec3 hot = mix(vec3(1.0,0.42,0.12), vec3(1.0,0.93,0.80), smoothstep(0.35,1.0,t));
+      float turb = 0.72+0.55*noise(vec3(r*1.6, phi*2.4, uTime*0.10));
+      float edge = smoothstep(uDiskOut,uDiskOut*0.72,r)*smoothstep(uDiskIn*0.97,uDiskIn*1.14,r);
+      return hot*turb*edge*(0.55+2.1*t);
+    }
+
+    void main(){
+      vec2 uv = vUv*2.0-1.0;
+      vec3 rd = normalize(uFwd + uRight*uv.x*uTanHalf*uAspect + uUp*uv.y*uTanHalf);
+      vec3 ro = uCam;                       // in units of r_s, hole at the origin
+
+      // Work in the plane containing the camera, the ray and the hole.
+      vec3 n = cross(ro, rd);
+      if(length(n) < 1e-6){ gl_FragColor = vec4(0.0,0.0,0.0,1.0); return; }
+      n = normalize(n);
+      vec3 e1 = normalize(ro);
+      vec3 e2 = normalize(cross(n, e1));
+
+      float r = length(ro);
+      float u = 1.0/r;
+      float vr = dot(rd,e1), vt = dot(rd,e2);
+      if(abs(vt) < 1e-7) vt = 1e-7;
+      float du = -u*vr/vt;                  // du/dφ from the initial direction
+
+      float phi = 0.0;
+      // Sweep a fixed ~2π of orbital angle regardless of the step count, so the
+      // slider trades accuracy for speed rather than truncating the ray early.
+      float dphi = (6.2/uSteps) * (vt>0.0 ? 1.0 : -1.0);
+      vec3 acc = vec3(0.0);
+      vec3 prev = ro;
+      bool captured = false, escaped = false;
+      vec3 outDir = rd;
+
+      for(int i=0;i<400;i++){
+        if(float(i) >= uSteps) break;
+        // RK2 on u'' = -u + 1.5 u²   (r_s = 1)
+        float k1u = du,             k1d = -u + 1.5*u*u;
+        float um  = u + 0.5*dphi*k1u, dm = du + 0.5*dphi*k1d;
+        float k2u = dm,             k2d = -um + 1.5*um*um;
+        u  += dphi*k2u;
+        du += dphi*k2d;
+        phi += dphi;
+
+        if(u <= 0.0){ escaped = true; }
+        else {
+          float rr = 1.0/u;
+          vec3 pos = e1*(cos(phi)*rr) + e2*(sin(phi)*rr);
+          if(rr <= 1.0){ captured = true; break; }        // crossed the horizon
+          // equatorial crossing → accretion disk
+          if(uDiskOn > 0.5 && prev.y*pos.y < 0.0){
+            float t = prev.y/(prev.y-pos.y);
+            vec3 hit = mix(prev,pos,t);
+            float hr = length(hit);
+            if(hr > uDiskIn && hr < uDiskOut){
+              float hphi = atan(hit.z, hit.x);
+              acc += diskColour(hr, hphi);
+            }
+          }
+          if(rr > 90.0){ escaped = true; outDir = normalize(pos-prev); }
+          prev = pos;
+        }
+        if(escaped) break;
+      }
+
+      vec3 col = acc;
+      if(!captured) col += sky(normalize(outDir));
+      gl_FragColor = vec4(col, 1.0);
+    }`
+}));
+quad.frustumCulled = false;
+scene.add(quad);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* ?steps=N lowers the geodesic count — needed for software-GL capture, where the
+   default is far beyond what a CPU rasteriser can manage. */
+const QS = new URLSearchParams(location.search);
+if(QS.has('steps')) uni.uSteps.value = Math.max(40, Math.min(400, +QS.get('steps')));
+const P = {M: QS.has('M')? +QS.get('M') : 4.297e6, disk:true};
+
+const sM = ui.slider({label:'Mass  M', min:1, max:1e10, value:P.M, log:true, unit:'M☉',
+  fmt:v=> v<1000 ? v.toFixed(1) : sci(v,2), on:v=>{P.M=v; update();}});
+
+const ro = ui.readout([
+  {id:'rs',   k:'Schwarzschild radius', tip:'Where escape velocity reaches the speed of light. Not a surface — nothing is there.'},
+  {id:'comp', k:'…for comparison'},
+  {id:'ph',   k:'photon sphere', tip:'1.5 r_s. Light can orbit here, but the orbit is unstable — the slightest nudge and it spirals in or escapes.'},
+  {id:'isco', k:'innermost stable orbit', tip:'3 r_s. Inside this, no circular orbit is stable, so the accretion disk has a hole in the middle.'},
+  {id:'shad', k:'apparent shadow radius', cls:'hi',
+   tip:'√27/2 ≈ 2.6 r_s. The shadow looks far bigger than the horizon because the hole bends the light around itself.'},
+  {id:'dil',  k:'clock rate at 3 r_s', tip:'A clock there ticks this fraction as fast as one far away.'},
+  {id:'tide', k:'tidal stretch across 2 m', tip:'The difference in gravity between your head and your feet at the horizon.'},
+  {id:'hawk', k:'Hawking temperature', tip:'Colder than the microwave background for anything above a lunar mass — so these all grow, not evaporate.'},
+  {id:'evap', k:'evaporation time'},
+  {id:'surv', k:'survivable at the horizon?', cls:'big'}
+]);
+
+const panel = el('div');
+panel.appendChild(ui.section('The one equation',
+  ui.eq('r_s = 2GM / c²   <span class="c">= 2.953 km × (M / M☉)</span>'),
+  ui.eq("d²u/dφ² + u = (3/2) r_s u²   <span class=\"c\">u = 1/r</span>"),
+  ui.note('The second line is what this page draws. Every pixel integrates that equation to '+
+          'find where a light ray actually came from. <b>The right-hand term is the whole '+
+          'difference from Newton</b> — delete it and the ring vanishes.')
+));
+panel.appendChild(ui.section('Mass', sM.node,
+  ui.btnRow(...Object.keys(PRESETS).map(k=>ui.button(k,()=>{
+    P.M=PRESETS[k].M; sM.set(P.M); update();
+  })))));
+panel.appendChild(ui.section('Measurements', ro.node));
+panel.appendChild(ui.section('Display',
+  ui.toggle({label:'Accretion disk', value:true, on:v=>{P.disk=v; uni.uDiskOn.value=v?1:0;}}).node,
+  ui.slider({label:'Integration steps', min:80, max:400, step:10, value:180, d:0,
+    on:v=>{uni.uSteps.value=v;}}).node,
+  ui.note('Lower the step count if the frame rate suffers. Below ~140 the photon ring starts '+
+          'to break up — that is integration error, not physics.')));
+panel.appendChild(ui.section('Sources', ui.ref(
+  '<b>Metric:</b> Schwarzschild 1916, Sitzungsber. Preuss. Akad. Wiss. 189 · '+
+  '<b>Shadow size:</b> Synge 1966, MNRAS 131, 463 · '+
+  '<b>Disk temperature:</b> Shakura &amp; Sunyaev 1973, A&amp;A 24, 337 · '+
+  '<b>Hawking radiation:</b> Hawking 1974, Nature 248, 30 · '+
+  '<b>Evaporation:</b> Page 1976, PRD 13, 198 · '+
+  '<b>Images:</b> EHT Collaboration 2019, ApJL 875, L1 (M87*); 2022, ApJL 930, L12 (Sgr A*)')));
+app.setPanel(panel);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EFFECTIVE POTENTIAL PLOT
+   V(r) = (1 − r_s/r)/r²  for light. Its maximum is the photon sphere, and the
+   height of that maximum sets the critical impact parameter — the shadow.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function drawPlot(){
+  const p = Plot({xmin:0, xmax:10, ymin:0, ymax:0.18,
+    xfmt:v=>v, yfmt:v=>v.toFixed(2)});
+  p.frame('EFFECTIVE POTENTIAL FOR LIGHT','radius  r  [r_s]','V(r)  [arbitrary]',
+    [0,2,4,6,8,10],[0,0.05,0.10,0.15]);
+
+  const pts=[];
+  for(let r=1.001;r<=10;r+=0.02) pts.push([r,(1-1/r)/(r*r)]);
+  p.line(pts, PAL.clay, 2.3);
+
+  const peak=(1-1/photonSph)/(photonSph*photonSph);
+  p.vline(1, PAL.ink, [4,3]);
+  p.vline(photonSph, PAL.rust, [3,3]);
+  p.vline(ISCO, PAL.blue, [3,3]);
+  p.hline(peak, PAL.ink4, [2,4]);
+  p.marker(photonSph, peak, PAL.rust, 4);
+
+  p.label('horizon',       p.tx(1)+5,  p.ty(0.165), PAL.ink);
+  p.label('photon sphere', p.tx(photonSph)+6, p.ty(0.148), PAL.rust);
+  p.label('ISCO',          p.tx(ISCO)+6, p.ty(0.128), PAL.blue);
+  p.label('anything with more energy than this peak falls in',
+          p.x0+8, p.y0-10, PAL.ink3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Takes a RADIUS in km and compares it against other radii — not diameters.
+   Mixing the two silently halves or doubles every comparison on the page. */
+const R_MOON=1737, R_EARTH=6371, R_SUN=6.957e5;
+function sizeCompare(km){
+  if(km < 1)       return fmt(km*1000,0)+' m';
+  if(km < R_MOON)  return fmt(km,0)+' km — smaller than the Moon';
+  if(km < R_EARTH) return fmt(km,0)+' km — smaller than Earth';
+  if(km < R_SUN)   return fmt(km,0)+' km — '+fmt(km/R_EARTH,1)+'× Earth’s radius';
+  if(km < KM_AU)   return sci(km,2)+' km — '+fmt(km/R_SUN,1)+'× the Sun’s radius';
+  if(km < KM_LY)   return fmt(km/KM_AU,2)+' AU'+(km/KM_AU>39.5?' — beyond Pluto’s orbit':'');
+  return fmt(km/KM_LY,2)+' light years';
+}
+
+function update(){
+  const M=P.M, rs=rs_km(M);
+  const tide=tidalAtHorizon(M,2);
+  const survivable = tide < 100;          // ~10 g across a body is roughly the limit
+
+  ro.set('rs',   sizeCompare(rs));
+  ro.set('comp', rs<12742 ? 'fits inside a city or a planet'
+               : rs<KM_AU ? 'fits inside a star system'
+               : 'larger than most planetary orbits');
+  ro.set('ph',   sizeCompare(rs*photonSph));
+  ro.set('isco', sizeCompare(rs*ISCO));
+  ro.set('shad', sizeCompare(rs*SHADOW)+'  ('+SHADOW.toFixed(2)+' r_s)');
+  ro.set('dil',  fmt(dilation(3),4)+' × normal');
+  ro.set('tide', sci(tide,2)+' m/s²  ('+sci(tide/9.81,1)+' g)');
+  ro.set('hawk', sci(hawkingK(M),2)+' K');
+  ro.set('evap', sci(evaporateYr(M),2)+' years');
+  ro.set('surv', survivable
+    ? '<span class="good">yes — you would not feel it</span>'
+    : '<span class="warn">no — torn apart long before</span>');
+
+  app.setCaption(
+    `<b>${sizeCompare(rs)} across.</b> ` +
+    (survivable
+      ? 'Counter-intuitively, the bigger the hole the gentler the crossing. Here the tidal '+
+        'stretch across a human body at the horizon is weaker than standing up. You would '+
+        'pass through without noticing — and could never come back.'
+      : 'Tidal forces here are '+sci(tide/9.81,1)+' g across two metres. Anything falling in '+
+        'is pulled into a thread long before it reaches the horizon.') +
+    ' <span class="cite">Shadow radius √27/2 r_s — Synge 1966.</span>');
+
+  drawPlot();
+}
+
+app.onFrame(dt=>{
+  uni.uTime.value += dt;
+  // feed the camera basis to the raytracer; the scene has no geometry to transform
+  camera.updateMatrixWorld();
+  const dir=new THREE.Vector3(), up=new THREE.Vector3(), right=new THREE.Vector3();
+  camera.getWorldDirection(dir);                  // camera forward
+  up.set(0,1,0).applyQuaternion(camera.quaternion);
+  right.crossVectors(dir,up).normalize();         // forward × up = right (right-handed)
+  uni.uCam.value.copy(camera.position);
+  uni.uFwd.value.copy(dir); uni.uUp.value.copy(up); uni.uRight.value.copy(right);
+  uni.uTanHalf.value = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2);
+  uni.uAspect.value  = camera.aspect;
+});
+
+app.onThemeChange(update);   // repaint the plot when the theme flips
+update();
+</script>

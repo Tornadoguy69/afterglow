@@ -1,0 +1,33 @@
+{
+  "id": "nebulae",
+  "title": "Nebulae",
+  "blurb": "The same cloud is pink, blue or black depending only on the star beside it. One threshold — 13.6 eV — decides which.",
+  "tier": "established",
+  "entry": "index.html",
+  "sources": [
+    {
+      "claim": "Ionisation bubbles / Stromgren radius",
+      "cite": "Stromgren 1939, ApJ 89, 526"
+    },
+    {
+      "claim": "O-star ionising photon output",
+      "cite": "Martins, Schaerer & Hillier 2005, A&A 436, 1049"
+    },
+    {
+      "claim": "B-star output",
+      "cite": "Sternberg, Hoffmann & Pauldrach 2003, ApJ 599, 1333"
+    },
+    {
+      "claim": "Case-B recombination, Halpha/Hbeta = 2.85",
+      "cite": "Osterbrock & Ferland, AGN2, 2006"
+    },
+    {
+      "claim": "Rayleigh scattering lambda^-4",
+      "cite": "Rayleigh 1871, Phil. Mag. 41, 107"
+    }
+  ],
+  "open": [
+    "Dust extinction is not radiative-transfer modelled; the reflection case uses a simple inverse-square falloff.",
+    "Assumes a uniform-density cloud. Real nebulae are clumpy, which makes ionisation fronts ragged."
+  ]
+}

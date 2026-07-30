@@ -1,0 +1,296 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Big Bang — Afterglow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../engine/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <a class="back" href="../../index.html">← All topics</a>
+      <h1>The Big Bang</h1>
+      <span class="tier tier-established">Established</span>
+      <span class="sub">and exactly where the evidence stops</span>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">Thermal history</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset" title="Snap back">⤢</button>
+          <button class="ib" id="insMin" title="Collapse">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture } from '../../engine/engine.js';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THERMAL HISTORY.
+   Temperature and time are tabulated at the standard epoch markers and
+   interpolated in log–log between them. Stitching separate analytic formulae for
+   the radiation and matter eras introduces a visible kink at equality; a table of
+   published values does not.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const EPOCHS = [
+  {t:1e-43, T:1.4e32, name:'Planck time',            ev:'none',
+   what:'Quantum gravity. General relativity and quantum mechanics both apply and are mutually incompatible. Nobody has a theory for this.'},
+  {t:1e-36, T:1e28,   name:'Inflation begins',       ev:'indirect',
+   what:'A brief exponential stretch, proposed to explain why the universe is so flat and so uniform. Strongly motivated by the CMB — but not confirmed.'},
+  {t:1e-32, T:1e28,   name:'Inflation ends',         ev:'indirect',
+   what:'Reheating. The energy driving inflation converts into a hot soup of particles.'},
+  {t:1e-12, T:1e15,   name:'Electroweak transition', ev:'lab',
+   what:'The last epoch whose energies the LHC can actually reach. Beyond here we are extrapolating past tested physics.'},
+  {t:1e-5,  T:2e12,   name:'Quarks bind',            ev:'lab',
+   what:'Free quarks confine into protons and neutrons. Reproduced in heavy-ion colliders.'},
+  {t:1,     T:1e10,   name:'Neutrinos decouple',     ev:'indirect',
+   what:'The neutrino background dates from here. It should still exist and has never been directly detected.'},
+  {t:180,   T:1e9,    name:'Nucleosynthesis',        ev:'solid',
+   what:'Helium, deuterium and lithium form. Their measured abundances match prediction — this is the oldest event we have real evidence for.'},
+  {t:1.6e12,T:9400,   name:'Matter–radiation equality', ev:'solid',
+   what:'Matter starts to outweigh radiation. Structure can finally begin to grow.'},
+  {t:1.2e13,T:3000,   name:'Recombination',          ev:'direct',
+   what:'Electrons bind to nuclei, the fog clears, and light travels freely for the first time. This is the CMB, and it is as far back as we can ever see directly.'},
+  {t:6e15,  T:50,     name:'First stars',            ev:'direct',
+   what:'The cosmic dark ages end. JWST is currently pushing into this era.'},
+  {t:4.35e17,T:2.725, name:'Now',                    ev:'direct',
+   what:'13.8 billion years later. The same photons are still arriving, stretched by a factor of about 1100.'}
+];
+
+const T_NOW=2.725, T_REC=3000;
+function interp(t){
+  const E=EPOCHS;
+  if(t<=E[0].t) return E[0].T;
+  if(t>=E[E.length-1].t) return E[E.length-1].T;
+  for(let i=0;i<E.length-1;i++){
+    if(t>=E[i].t && t<=E[i+1].t){
+      const f=(Math.log10(t)-Math.log10(E[i].t))/(Math.log10(E[i+1].t)-Math.log10(E[i].t));
+      return Math.pow(10, Math.log10(E[i].T)+f*(Math.log10(E[i+1].T)-Math.log10(E[i].T)));
+    }
+  }
+  return T_NOW;
+}
+const epochAt = t => { let e=EPOCHS[0]; for(const x of EPOCHS) if(t>=x.t) e=x; return e; };
+const redshift = T => T/T_NOW - 1;
+/* kT in electronvolts — the useful currency for "what could exist yet" */
+const kT_eV = T => 8.617e-5*T;
+
+function timeLabel(s){
+  if(s<1e-30) return sci(s,1)+' s';
+  if(s<1)     return sci(s,2)+' s';
+  if(s<3.15e7)   return fmt(s,0)+' s';
+  const yr=s/3.156e7;
+  if(yr<1e3)  return fmt(yr,0)+' years';
+  if(yr<1e6)  return fmt(yr/1e3,0)+' thousand years';
+  if(yr<1e9)  return fmt(yr/1e6,0)+' million years';
+  return fmt(yr/1e9,2)+' billion years';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCENE — an expanding, cooling, initially opaque plasma.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const app = boot({
+  cameraPos:new THREE.Vector3(0,30,120), target:new THREE.Vector3(0,0,0),
+  dist:[25,700], near:0.5, far:4000, exposure:0.85,
+  bloom:{strength:0.45, radius:0.6, threshold:0.35}
+});
+const {scene}=app;
+
+const NP=34000;
+const base=new Float32Array(NP*3), pos=new Float32Array(NP*3), col=new Float32Array(NP*3);
+{
+  let seed=5;
+  const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff;};
+  for(let i=0;i<NP;i++){
+    // uniform in a ball, so density stays even as it expands
+    const u=rnd(), ct=2*rnd()-1, st=Math.sqrt(1-ct*ct), ph=rnd()*6.2832;
+    const r=Math.cbrt(u);
+    base[i*3]=r*st*Math.cos(ph); base[i*3+1]=r*ct; base[i*3+2]=r*st*Math.sin(ph);
+  }
+}
+const geo=new THREE.BufferGeometry();
+geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+const pts=new THREE.Points(geo,new THREE.PointsMaterial({
+  size:2.0,map:starTexture(false),vertexColors:true,transparent:true,opacity:0.6,
+  depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(pts);
+
+/* the last scattering surface — the wall we cannot see past */
+const wall=new THREE.Mesh(new THREE.SphereGeometry(1,48,32),
+  new THREE.MeshBasicMaterial({color:0xFFB870, transparent:true, opacity:0.0,
+    side:THREE.BackSide, blending:THREE.AdditiveBlending, depthWrite:false}));
+scene.add(wall);
+
+function blackbodyRGB(T){
+  const t=Math.max(1000,Math.min(40000,T))/100;
+  const cl=v=>Math.max(0,Math.min(255,v));
+  const r=t<=66?255:329.698727446*Math.pow(t-60,-0.1332047592);
+  const g=t<=66?99.4708025861*Math.log(t)-161.1195681661:288.1221695283*Math.pow(t-60,-0.0755148492);
+  const b=t>=66?255:(t<=19?0:138.5177312231*Math.log(t-10)-305.0447927307);
+  return [cl(r)/255,cl(g)/255,cl(b)/255];
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+const LOGT_MIN=-43, LOGT_MAX=Math.log10(4.35e17);
+const P={logt:1, play:false};
+
+const sT=ui.slider({label:'Time since the beginning', min:LOGT_MIN, max:LOGT_MAX, step:0.01,
+  value:P.logt, fmt:v=>timeLabel(Math.pow(10,v)),
+  on:v=>{P.logt=v; P.play=false; playBtn.textContent='▶  Run it forward'; update();}});
+const playBtn=ui.button('▶  Run it forward',()=>{
+  P.play=!P.play; playBtn.textContent=P.play?'❚❚  Pause':'▶  Run it forward';});
+
+const panel=el('div');
+panel.appendChild(ui.section('One relation does most of the work',
+  ui.eq('T ∝ 1 / a   <span class="c">expansion cools everything</span>'),
+  ui.eq('kT = 8.617×10⁻⁵ eV × T   <span class="c">what can exist yet</span>'),
+  ui.note('The early universe is not a place, it is a temperature. Everything that happens '+
+          'happens because the expansion drops kT below some binding energy — <b>quarks bind, '+
+          'then nuclei, then atoms</b>, each when it gets cold enough.')));
+
+panel.appendChild(ui.section('Time', sT.node, ui.btnRow(playBtn),
+  ui.btnRow(...['Nucleosynthesis','Recombination','Now'].map(n=>ui.button(n,()=>{
+    const e=EPOCHS.find(x=>x.name===n);
+    P.logt=Math.log10(e.t); sT.set(P.logt);
+    P.play=false; playBtn.textContent='▶  Run it forward'; update();
+  })))));
+
+const ro=ui.readout([
+  {id:'ep',  k:'epoch', cls:'big'},
+  {id:'t',   k:'time since the beginning'},
+  {id:'T',   k:'temperature'},
+  {id:'kT',  k:'typical particle energy', tip:'Compare with binding energies: 13.6 eV for an atom, ~8 MeV per nucleon, ~200 MeV for quark confinement.'},
+  {id:'z',   k:'redshift'},
+  {id:'a',   k:'size relative to today'},
+  {id:'see', k:'can we observe this directly?', cls:'hi'},
+  {id:'ev',  k:'evidence'}
+]);
+panel.appendChild(ui.section('State', ro.node));
+
+panel.appendChild(ui.section('Where the evidence stops', ui.note(
+  '<b>Direct:</b> back to recombination, 380 000 years. The CMB is a photograph of that moment '+
+  'and the universe is opaque before it. We cannot ever see further with light.'),
+  ui.note('<b>Solid but indirect:</b> back to nucleosynthesis, about one second. We did not watch '+
+  'it, but the helium and deuterium it produced are still here in the predicted amounts.'),
+  ui.note('<b>Extrapolation:</b> before roughly 10⁻¹² seconds we are past the energies any '+
+  'collider has reached. Inflation is well motivated and fits the CMB, but it is not confirmed. '+
+  'The Planck era has no accepted theory at all.')));
+
+panel.appendChild(ui.section('Sources', ui.ref(
+  '<b>Expansion:</b> Hubble 1929, PNAS 15, 168 · '+
+  '<b>CMB discovery:</b> Penzias &amp; Wilson 1965, ApJ 142, 419 · '+
+  '<b>T₀ = 2.72548 K:</b> Fixsen 2009, ApJ 707, 916 · '+
+  '<b>Recombination and parameters:</b> Planck Collaboration VI 2020, A&amp;A 641, A6 · '+
+  '<b>Nucleosynthesis:</b> Cyburt et al. 2016, Rev. Mod. Phys. 88, 015004 · '+
+  '<b>Inflation:</b> Guth 1981, PRD 23, 347; Linde 1982, Phys. Lett. B 108, 389')));
+app.setPanel(panel);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLOT
+   ═══════════════════════════════════════════════════════════════════════════ */
+function drawPlot(){
+  const p=Plot({xmin:LOGT_MIN, xmax:LOGT_MAX+0.6, ymin:0, ymax:33,
+    xfmt:v=>v===0?'1 s':'10'+sup(v), yfmt:v=>v===0?'1':'10'+sup(v)});
+  p.frame('TEMPERATURE AGAINST TIME','time  [seconds]','temperature  [K]',
+    [-40,-30,-20,-10,0,10],[0,10,20,30]);
+
+  // shade everything we cannot observe directly
+  const lrec=Math.log10(1.2e13);
+  const ctx=Plot.ctx;
+  ctx.save(); ctx.beginPath(); ctx.rect(p.x0,p.y1,p.tx(lrec)-p.x0,p.y0-p.y1);
+  ctx.fillStyle='rgba(168,72,58,0.07)'; ctx.fill(); ctx.restore();
+
+  const pts=[];
+  for(let l=LOGT_MIN;l<=LOGT_MAX;l+=0.15) pts.push([l, Math.log10(interp(Math.pow(10,l)))]);
+  p.line(pts, PAL.clay, 2.4);
+
+  EPOCHS.forEach(e=>{
+    const x=Math.log10(e.t), y=Math.log10(e.T);
+    p.marker(x,y, e.ev==='direct'?PAL.sage : e.ev==='solid'?PAL.kraft : PAL.ink4, 3);
+  });
+  p.vline(lrec, PAL.rust, [4,3]);
+  p.label('opaque — no light escapes', p.x0+8, p.y1+16, PAL.rust);
+  p.label('CMB', p.tx(lrec)+5, p.y1+30, PAL.rust);
+
+  const x=P.logt;
+  p.vline(x, PAL.ink, [1,2]);
+  p.marker(x, Math.log10(interp(Math.pow(10,x))), PAL.ink, 4.5);
+}
+const sup = n => String(Math.round(n)).replace('-','⁻').replace(/\d/g,d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+function update(){
+  const t=Math.pow(10,P.logt);
+  const T=interp(t), e=epochAt(t), z=redshift(T);
+  const a=T_NOW/T;
+
+  // expansion: scale positions by a, on a log-compressed scale so all 60 decades fit
+  const vis=8+52*Math.pow(Math.max(a,1e-30),0.055);
+  const rgb=blackbodyRGB(T);
+  // strictly above, so that recombination itself reads as the moment it clears
+  const opaque = T > T_REC + 0.5;
+  for(let i=0;i<NP;i++){
+    pos[i*3]=base[i*3]*vis; pos[i*3+1]=base[i*3+1]*vis; pos[i*3+2]=base[i*3+2]*vis;
+    col[i*3]=rgb[0]; col[i*3+1]=rgb[1]; col[i*3+2]=rgb[2];
+  }
+  geo.attributes.position.needsUpdate=true;
+  geo.attributes.color.needsUpdate=true;
+  pts.material.opacity = opaque ? 0.85 : 0.34;
+  pts.material.size    = opaque ? 3.0 : 1.7;
+
+  wall.scale.setScalar(vis*1.06);
+  wall.material.opacity = opaque ? 0.10 : 0.0;
+  wall.material.color.setRGB(rgb[0],rgb[1],rgb[2]);
+
+  ro.set('ep', e.name);
+  ro.set('t', timeLabel(t));
+  ro.set('T', sci(T,2)+' K');
+  ro.set('kT', sci(kT_eV(T),2)+' eV');
+  ro.set('z', z<0.01? '0' : sci(z,2));
+  ro.set('a', a>=1? '1' : sci(a,2)+' ×');
+  ro.set('see', opaque
+    ? '<span class="warn">no — the universe is opaque</span>'
+    : '<span class="good">yes — light travels freely</span>');
+  ro.set('ev', e.ev==='direct'?'<span class="good">direct observation</span>'
+            : e.ev==='solid'  ?'<span class="good">indirect, solid</span>'
+            : e.ev==='lab'    ?'reproduced in colliders'
+            : e.ev==='indirect'?'<span class="warn">inferred, unconfirmed</span>'
+            : '<span class="warn">no accepted theory</span>');
+
+  app.setCaption(`<b>${e.name}</b> — ${e.what} `+
+    `<span class="cite">${timeLabel(t)} · ${sci(T,2)} K · kT = ${sci(kT_eV(T),2)} eV</span>`);
+
+  drawPlot();
+}
+
+app.onFrame(dt=>{
+  if(P.play){
+    P.logt+=dt*7;
+    if(P.logt>LOGT_MAX){ P.logt=LOGT_MIN; }
+    sT.set(P.logt); update();
+  }
+});
+app.onThemeChange(update);   // repaint the plot when the theme flips
+update();
+</script>

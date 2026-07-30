@@ -1,0 +1,246 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Afterglow — physics you can poke at</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="engine/style.css">
+<style>
+  body{overflow-y:auto}
+  .wrap{max-width:1120px;margin:0 auto;padding:26px 28px 90px}
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:44px}
+  .wordmark{font-family:var(--serif);font-size:17px;letter-spacing:.01em;color:var(--ink)}
+  .topbar .tools{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .topbar .back{
+    font-family:var(--sans);font-size:12px;color:var(--ink-3);text-decoration:none;
+    border:1px solid var(--line-2);border-radius:7px;padding:7px 12px;transition:.14s var(--ease);
+  }
+  .topbar .back:hover{background:var(--paper-3);color:var(--ink);border-color:var(--ink-4)}
+  .hero h1{
+    font-family:var(--serif);font-size:clamp(34px,5vw,58px);font-weight:400;
+    letter-spacing:-.022em;line-height:1.08;margin:0 0 18px;max-width:17ch;
+  }
+  .hero p{
+    font-family:var(--serif);font-size:17px;line-height:1.62;color:var(--ink-2);
+    max-width:62ch;margin:0 0 14px;
+  }
+  .hero .meta{font-family:var(--mono);font-size:11px;color:var(--ink-4);margin-top:22px}
+  .rule{height:1px;background:var(--line);margin:44px 0 30px}
+  h2.sec-title{
+    font-family:var(--sans);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-4);font-weight:600;margin:0 0 6px;
+  }
+  .sec-lede{font-family:var(--serif);font-size:14px;color:var(--ink-3);margin:0 0 22px;max-width:64ch}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+  .card{
+    display:flex;flex-direction:column;gap:9px;padding:19px 20px 17px;
+    border:1px solid var(--line-2);border-radius:12px;background:var(--paper-2);
+    text-decoration:none;color:inherit;transition:border-color .16s,background .16s,transform .16s;
+  }
+  a.card:hover{border-color:var(--ink-4);background:var(--paper-3);transform:translateY(-2px)}
+  .card h3{font-family:var(--serif);font-size:20px;font-weight:400;margin:0;letter-spacing:-.01em}
+  .card p{font-family:var(--serif);font-size:13.5px;line-height:1.55;color:var(--ink-2);margin:0}
+  .card .foot{
+    display:flex;align-items:center;gap:9px;margin-top:auto;padding-top:8px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:10px;color:var(--ink-4);
+  }
+  .card.soon{opacity:.62;background:transparent;border-style:dashed}
+  .card.soon h3{color:var(--ink-2)}
+  .go{margin-left:auto;color:var(--clay);font-family:var(--sans);font-size:12px;font-weight:500}
+  .tiers{display:flex;gap:22px;flex-wrap:wrap;margin:0 0 30px}
+  .tiers div{max-width:30ch}
+  .tiers .tier{margin-bottom:7px}
+  .tiers p{font-family:var(--serif);font-size:13px;color:var(--ink-3);line-height:1.55;margin:0}
+  footer{
+    margin-top:56px;padding-top:24px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:11px;color:var(--ink-4);line-height:1.8;
+  }
+  footer a{color:var(--ink-3)}
+</style>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="wordmark">Afterglow</span>
+    <div class="tools" id="tools">
+      <a class="back" href="contribute.html">Add a topic</a>
+    </div>
+  </div>
+  <div class="hero">
+    <h1>Physics you can poke at, not read about.</h1>
+    <p>Every topic here is a working simulation. The equations run live — change a number and
+       the sky changes with it. Nothing is a pre-rendered animation dressed up as a model.</p>
+    <p>Each page states plainly how confident the field actually is, because the difference
+       between <em>measured</em>, <em>argued about</em> and <em>untestable</em> is the most
+       important thing in science writing and the first thing usually thrown away.</p>
+    <div class="meta">open source · every claim carries a citation · contributions welcome</div>
+  </div>
+
+  <div class="rule"></div>
+
+  <h2 class="sec-title">How to read the badges</h2>
+  <div class="tiers">
+    <div>
+      <span class="tier tier-established">Established</span>
+      <p>Reproduced, quantitative, not seriously contested. You could look it up in a graduate textbook.</p>
+    </div>
+    <div>
+      <span class="tier tier-active">Active research</span>
+      <p>Real data exists, but no consensus on what it means. Expect this page to change.</p>
+    </div>
+    <div>
+      <span class="tier tier-speculative">Speculative</span>
+      <p>Interesting, internally consistent, and currently impossible to test. Not the same as knowledge.</p>
+    </div>
+  </div>
+
+  <h2 class="sec-title">Settled physics</h2>
+  <p class="sec-lede">Working modules. Drag to orbit, scroll to zoom, change any parameter.</p>
+  <div class="grid">
+
+    <a class="card" href="../dark-matter-visualizations.html">
+      <h3>Dark Matter</h3>
+      <p>Four simulations across five independent lines of evidence. Switch off the invisible
+         mass and watch a galaxy fail to hold itself together.</p>
+      <div class="foot">
+        <span class="tier tier-established">Established</span>
+        <span>4 scenes · narrated</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+    <a class="card" href="modules/stellar-life/index.html">
+      <h3>The Life of a Star</h3>
+      <p>One number — mass at birth — decides brightness, colour, lifespan and how it dies.
+         Run a star from molecular cloud to remnant on a live HR diagram.</p>
+      <div class="foot">
+        <span class="tier tier-established">Established</span>
+        <span>HR diagram · 0.05–60 M☉</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+    <a class="card" href="modules/black-holes/index.html">
+      <h3>Black Holes</h3>
+      <p>Every pixel integrates a light ray through curved spacetime. See why the shadow is
+         far larger than the horizon — and why a bigger hole is gentler to fall into.</p>
+      <div class="foot">
+        <span class="tier tier-established">Established</span>
+        <span>ray-traced · 1–10¹⁰ M☉</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+    <a class="card" href="modules/nebulae/index.html">
+      <h3>Nebulae</h3>
+      <p>The same cloud is pink, blue or black depending only on the star beside it. One
+         threshold — 13.6 eV — decides which.</p>
+      <div class="foot">
+        <span class="tier tier-established">Established</span>
+        <span>Strömgren spheres</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+    <a class="card" href="modules/planet-formation/index.html">
+      <h3>Planet Formation</h3>
+      <p>Dust to worlds, and the snow line that decided why the inner planets are small. Includes
+         the one step nobody has fully solved.</p>
+      <div class="foot">
+        <span class="tier tier-established">Established</span>
+        <span>metre-size barrier</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+    <a class="card" href="modules/expanding-universe/index.html">
+      <h3>The Expanding Universe</h3>
+      <p>Stand on any galaxy you like and every other one still recedes from you. Move yourself
+         and refit — the answer does not change.</p>
+      <div class="foot">
+        <span class="tier tier-established">Established</span>
+        <span>includes the H₀ tension</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+    <a class="card" href="modules/big-bang/index.html">
+      <h3>The Big Bang</h3>
+      <p>Sixty decades of time on one slider, from the Planck era to now — and a shaded region
+         marking exactly where the evidence runs out.</p>
+      <div class="foot">
+        <span class="tier tier-established">Established</span>
+        <span>thermal history</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+  </div>
+
+  <div class="rule"></div>
+
+  <h2 class="sec-title">Open questions</h2>
+  <p class="sec-lede">Real data, no consensus. These pages will need rewriting, and that is the
+     point of labelling them.</p>
+  <div class="grid">
+
+    <a class="card" href="modules/little-red-dots/index.html">
+      <h3>The Little Red Dots</h3>
+      <p>300+ objects JWST found that nobody predicted and nobody can yet explain. Four competing
+         models scored against the same eight observations.</p>
+      <div class="foot">
+        <span class="tier tier-active">Active research</span>
+        <span>discovered 2024</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+    <a class="card" href="modules/are-we-alone/index.html">
+      <h3>Are We Alone?</h3>
+      <p>Three terms of the Drake equation are measured. Four are not, and they swing the answer
+         by twenty-six orders of magnitude.</p>
+      <div class="foot">
+        <span class="tier tier-active">Active research</span>
+        <span>no probability exists</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+  </div>
+
+  <div class="rule"></div>
+
+  <h2 class="sec-title">Not currently testable</h2>
+  <p class="sec-lede">Included because the reasoning is interesting — and separated because
+     that is honest.</p>
+  <div class="grid">
+
+    <a class="card" href="modules/multiverse/index.html">
+      <h3>The Multiverse</h3>
+      <p>Eternal inflation, many-worlds and the string landscape are three different ideas, not
+         one. See precisely why no experiment separates them.</p>
+      <div class="foot">
+        <span class="tier tier-speculative">Speculative</span>
+        <span>one test, came back negative</span>
+        <span class="go">Open →</span>
+      </div>
+    </a>
+
+  </div>
+
+  <footer>
+    Built with three.js. Every module is one folder — physics, scene, plot, captions — so a new
+    topic can be added without touching the engine.
+    <a href="contribute.html">See how to add one →</a><br>
+    Research notes for the JWST and biosignature pages are in
+    <a href="../research/JWST_AND_LIFE.md">research/JWST_AND_LIFE.md</a>.<br>
+    Press <code>D</code> anywhere to switch theme.<br>
+    <em>Afterglow</em> — what cosmologists call the cosmic microwave background: the light
+    still arriving from the moment the universe turned transparent.
+  </footer>
+</div>
+
+<script type="module">
+  import { initTheme, mountToggle } from './engine/theme.js';
+  initTheme();
+  mountToggle(document.getElementById('tools'));
+</script>

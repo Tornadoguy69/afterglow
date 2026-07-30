@@ -1,0 +1,299 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Are We Alone? — Afterglow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../engine/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <a class="back" href="../../index.html">← All topics</a>
+      <h1>Are We Alone?</h1>
+      <span class="tier tier-active">Active research</span>
+      <span class="sub">three terms measured, four guessed</span>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">What each term is worth</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset" title="Snap back">⤢</button>
+          <button class="ib" id="insMin" title="Collapse">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture } from '../../engine/engine.js';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   N = R* · f_p · n_e · f_l · f_i · f_c · L        (Drake 1961)
+
+   The first three terms are now genuinely measured. The last four have no
+   observational constraint whatsoever — f_l has exactly one data point, and that
+   data point is us, which is a textbook selection effect: we could only be asking
+   the question on a planet where it already happened.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const TERMS = [
+  {k:'R',  sym:'R*',  label:'new stars per year',
+   min:0.5, max:10, val:1.6, known:true,
+   note:'Milky Way star-formation rate. Measured from infrared and Hα surveys.',
+   cite:'Licquia & Newman 2015, ApJ 806, 96 — 1.65 ± 0.19 M☉/yr'},
+  {k:'fp', sym:'f_p', label:'fraction with planets',
+   min:0.1, max:1, val:1.0, known:true,
+   note:'Essentially all of them. Microlensing showed planets outnumber stars.',
+   cite:'Cassan et al. 2012, Nature 481, 167'},
+  {k:'ne', sym:'n_e', label:'habitable-zone rocky planets per star',
+   min:0.01, max:2, val:0.4, known:true,
+   note:'From Kepler occurrence rates for Sun-like stars. The most uncertain of the measured three.',
+   cite:'Bryson et al. 2021, AJ 161, 36 — η⊕ = 0.37–0.60'},
+  {k:'fl', sym:'f_l', label:'…where life actually starts',
+   min:1e-8, max:1, val:0.5, known:false,
+   note:'One data point, and it is us. Abiogenesis has never been observed or reproduced.',
+   cite:'no measurement exists'},
+  {k:'fi', sym:'f_i', label:'…that become intelligent',
+   min:1e-8, max:1, val:0.1, known:false,
+   note:'Life existed on Earth for ~3.5 billion years before anything built a radio.',
+   cite:'no measurement exists'},
+  {k:'fc', sym:'f_c', label:'…that broadcast detectably',
+   min:1e-4, max:1, val:0.2, known:false,
+   note:'Earth has been detectable for about a century and is already getting quieter.',
+   cite:'no measurement exists'},
+  {k:'L',  sym:'L',   label:'years a signal lasts',
+   min:10, max:1e9, val:5000, known:false,
+   note:'The term Drake called the hardest. Could be decades; could be geological.',
+   cite:'no measurement exists'}
+];
+
+const P = Object.fromEntries(TERMS.map(t=>[t.k,t.val]));
+const drakeN = () => TERMS.reduce((n,t)=>n*P[t.k], 1);
+
+/* Scenario presets spanning the honest range of published guesses. */
+const SCENARIOS = {
+  'Optimistic':  {fl:1,     fi:0.5,   fc:0.5,  L:1e7},
+  'Middle':      {fl:0.5,   fi:0.1,   fc:0.2,  L:5000},
+  'Pessimistic': {fl:1e-6,  fi:1e-4,  fc:0.01, L:100},
+  'Rare Earth':  {fl:1e-8,  fi:1e-8,  fc:1e-4, L:10}
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCENE — the Milky Way from above, with N civilisations marked on it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const app = boot({
+  cameraPos:new THREE.Vector3(0,150,120), target:new THREE.Vector3(0,0,0),
+  dist:[40,900], near:0.5, far:5000, exposure:0.80,
+  bloom:{strength:0.30, radius:0.5, threshold:0.55}
+});
+const {scene}=app;
+const SPRITE = starTexture(false);
+const R_GAL = 100;                       // 100 units = 50,000 ly, the galactic disk
+
+/* galactic disk: exponential surface density + two-armed logarithmic spiral */
+const NSTAR=42000;
+{
+  const pos=new Float32Array(NSTAR*3), col=new Float32Array(NSTAR*3);
+  const c=new THREE.Color();
+  for(let i=0;i<NSTAR;i++){
+    let r=-26*(Math.log(Math.random())+Math.log(Math.random()));
+    r=Math.min(r,R_GAL);
+    let th=Math.random()*6.2832;
+    const arm=Math.cos(2*(th-2.3*Math.log(Math.max(r,3))));
+    if(Math.random()>0.30+0.70*Math.pow((arm+1)/2,2.0)) th+=(Math.random()-0.5)*1.5;
+    pos[i*3]=Math.cos(th)*r;
+    pos[i*3+1]=(Math.random()+Math.random()-1)*3.2*(1+r/90);
+    pos[i*3+2]=Math.sin(th)*r;
+    const t=Math.random();
+    c.setHSL(0.09+0.05*t, 0.35, r<18? 0.72 : 0.58+0.25*Math.random());
+    col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({
+    size:1.05,map:SPRITE,vertexColors:true,transparent:true,opacity:0.85,
+    depthWrite:false,blending:THREE.AdditiveBlending})));
+}
+
+/* civilisations — up to 4000 markers, positioned deterministically so the same N
+   always lights the same places */
+const NCIV_MAX=4000;
+const civPos=new Float32Array(NCIV_MAX*3);
+{
+  let seed=7;
+  const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff;};
+  for(let i=0;i<NCIV_MAX;i++){
+    let r=-26*(Math.log(rnd()+1e-9)+Math.log(rnd()+1e-9));
+    r=Math.min(Math.max(r,6),R_GAL*0.95);
+    const th=rnd()*6.2832;
+    civPos[i*3]=Math.cos(th)*r;
+    civPos[i*3+1]=(rnd()+rnd()-1)*2.4;
+    civPos[i*3+2]=Math.sin(th)*r;
+  }
+}
+const civGeo=new THREE.BufferGeometry();
+civGeo.setAttribute('position',new THREE.BufferAttribute(civPos,3));
+const civ=new THREE.Points(civGeo,new THREE.PointsMaterial({
+  size:5.2,map:starTexture(true),color:0x6FE3B0,transparent:true,opacity:1,
+  depthWrite:false,blending:THREE.AdditiveBlending}));
+scene.add(civ);
+
+/* us — always exactly one, 8 kpc out */
+const usGeo=new THREE.BufferGeometry();
+usGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array([52,0,0]),3));
+scene.add(new THREE.Points(usGeo,new THREE.PointsMaterial({
+  size:7.5,map:starTexture(true),color:0x6BA8FF,transparent:true,opacity:1,
+  depthWrite:false,blending:THREE.AdditiveBlending})));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+const sliders={};
+const panel=el('div');
+
+panel.appendChild(ui.section('The equation',
+  ui.eq('N = R* · f_p · n_e · f_l · f_i · f_c · L'),
+  ui.note('Drake wrote this in 1961 not to compute an answer but to organise a conversation. '+
+          'It is routinely quoted as though it produces a number. <b>It does not.</b>')
+));
+
+const measured=el('div'), guessed=el('div');
+TERMS.forEach(t=>{
+  const s=ui.slider({
+    label:t.sym+'  —  '+t.label,
+    min:t.min, max:t.max, value:t.val, log:true,
+    fmt:v=> v>=0.01&&v<1000 ? (+v.toPrecision(2)).toString() : sci(v,1),
+    on:v=>{P[t.k]=v; update();}
+  });
+  sliders[t.k]=s;
+  (t.known?measured:guessed).appendChild(s.node);
+});
+
+panel.appendChild(ui.section('Measured — we actually know these', measured,
+  ui.note('Kepler, TESS and microlensing surveys settled the first three terms. '+
+          'Move them across their full plausible ranges and watch how little the answer moves.')));
+
+panel.appendChild(ui.section('Guessed — nobody knows these', guessed,
+  ui.btnRow(...Object.keys(SCENARIOS).map(k=>ui.button(k,()=>{
+    Object.assign(P,SCENARIOS[k]);
+    Object.keys(SCENARIOS[k]).forEach(kk=>sliders[kk].set(P[kk]));
+    update();
+  }))),
+  ui.note('Every one of these presets has been seriously argued for in the literature. '+
+          'They span <b>fourteen orders of magnitude</b> in the final answer.')));
+
+const ro=ui.readout([
+  {id:'N',   k:'civilisations in the galaxy now', cls:'big',
+   tip:'The output of the equation given the current slider values.'},
+  {id:'sep', k:'nearest one would be',
+   tip:'Assuming they are spread evenly through the galactic disk.'},
+  {id:'lag', k:'round-trip message time'},
+  {id:'known',k:'contribution of measured terms'},
+  {id:'guess',k:'contribution of guessed terms', cls:'hi'},
+  {id:'span',k:'range across the four scenarios'}
+]);
+panel.appendChild(ui.section('Result', ro.node));
+
+panel.appendChild(ui.section('What we can honestly say', ui.note(
+  'We have found thousands of exoplanets and know that rocky worlds in habitable zones are '+
+  'common. We have <b>never</b> detected a confirmed biosignature, and never a technosignature. '+
+  'The best recent candidate — dimethyl sulfide on K2-18 b — reached 3σ and did not survive '+
+  'independent reanalysis.'), ui.note(
+  'That is the whole of it. Anyone quoting you a probability is inventing the last four numbers.')));
+
+panel.appendChild(ui.section('Sources', ui.ref(
+  '<b>Drake equation:</b> Drake 1961, Green Bank conference · '+
+  '<b>Star formation rate:</b> Licquia &amp; Newman 2015, ApJ 806, 96 · '+
+  '<b>Planet occurrence:</b> Cassan et al. 2012, Nature 481, 167 · '+
+  '<b>η⊕:</b> Bryson et al. 2021, AJ 161, 36 · '+
+  '<b>K2-18 b reanalysis:</b> arXiv:2505.13407; arXiv:2508.05961 · '+
+  '<b>Fermi paradox:</b> Hart 1975, QJRAS 16, 128')));
+app.setPanel(panel);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLOT — each term's plausible range, on a log axis.
+   The measured bars are short. The guessed bars run off the page.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function drawPlot(){
+  const p=Plot({xmin:-8.4, xmax:9.4, ymin:-0.6, ymax:TERMS.length-0.4,
+    xfmt:v=> v===0?'1' : '10'+supers(v), yfmt:()=>''});
+  p.frame('PLAUSIBLE RANGE OF EACH TERM','value  (log scale)','',
+    [-8,-4,0,4,8], []);
+
+  TERMS.forEach((t,i)=>{
+    const y=TERMS.length-1-i;
+    const lo=Math.log10(t.min), hi=Math.log10(t.max);
+    const col=t.known? PAL.sage : PAL.clay;
+    p.line([[lo,y],[hi,y]], col, 7);
+    p.marker(Math.log10(P[t.k]), y, PAL.ink, 3.6);
+    p.label(t.sym, p.x0-46, p.ty(y)+4, t.known?PAL.sage:PAL.clay);
+  });
+  p.vline(0, PAL.line2, [2,3]);
+  p.label('measured', p.x0+8, p.y1+15, PAL.sage);
+  p.label('guessed',  p.x0+78, p.y1+15, PAL.clay);
+  p.label('the four bars on the right span 8–14 orders of magnitude',
+          p.x0+8, p.y0-9, PAL.ink3);
+}
+const supers = n => String(n).replace('-','⁻').replace(/\d/g,d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+function update(){
+  const N=drakeN();
+  const known=P.R*P.fp*P.ne, guess=P.fl*P.fi*P.fc*P.L;
+
+  // civilisations rendered, capped for sanity
+  const shown=Math.max(0,Math.min(NCIV_MAX,Math.round(N)));
+  civGeo.setDrawRange(0,shown);
+  civ.visible=shown>0;
+
+  // mean separation if N are spread through a disk of radius 50,000 ly, 1000 ly thick
+  const volume=Math.PI*Math.pow(5e4,2)*1e3;           // ly³
+  const sep = N>0 ? Math.pow(volume/N, 1/3) : Infinity;
+
+  ro.set('N', N>=1e4 ? sci(N,2) : (N>=1 ? fmt(N,0) : (N>1e-6? N.toExponential(1) : sci(N,1))));
+  ro.set('sep', N<1
+    ? '<span class="warn">none — we are it</span>'
+    : (sep>1e5 ? sci(sep,2)+' ly — outside the galaxy' : fmt(sep,0)+' light years'));
+  ro.set('lag', N<1 ? '—' : (sep>1e5? '—' : fmt(2*sep,0)+' years'));
+  ro.set('known', sci(known,2)+' habitable worlds / yr');
+  ro.set('guess', sci(guess,2)+'  <span class="warn">unconstrained</span>');
+  // measured from the presets rather than asserted, so it can never drift
+  const vals=Object.values(SCENARIOS).map(s=>{
+    const q={...P,...s}; return TERMS.reduce((n,t)=>n*q[t.k],1);
+  });
+  const lo=Math.min(...vals), hi=Math.max(...vals);
+  ro.set('span', sci(lo,1)+' → '+sci(hi,1)+
+    '  <span class="warn">('+Math.round(Math.log10(hi/lo))+' orders)</span>');
+
+  app.setCaption(
+    N<1
+      ? `<b>N = ${N>1e-6? N.toExponential(1) : sci(N,1)}</b> — on these numbers the galaxy is empty and we are the only ones in it. `+
+        `Nudge the four guessed terms and this becomes millions. <span class="cite">That swing is the finding.</span>`
+      : `<b>${N>=1e4? sci(N,2) : fmt(N,0)} civilisations</b>, nearest one about ${sep>1e5? sci(sep,1) : fmt(sep,0)} light years away. `+
+        `Now set the guessed terms to Rare Earth and the same equation says we are alone. `+
+        `<span class="cite">Nothing measured changed — only four numbers nobody can measure.</span>`);
+
+  drawPlot();
+}
+
+let t=0;
+app.onFrame(dt=>{ t+=dt; scene.rotation.y=t*0.035; });
+app.onThemeChange(update);   // repaint the plot when the theme flips
+update();
+</script>
