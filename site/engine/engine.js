@@ -345,6 +345,7 @@ export function boot(opts={}){
   resize();
 
   wireInspector(); wireDivider(); wireTooltips(); wireChrome();
+  wireMobileLayout();
 
   addEventListener('keydown',e=>{
     if(/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
@@ -356,6 +357,9 @@ export function boot(opts={}){
     else if(k==='d') setTheme(getTheme()==='dark'?'light':'dark');
     else if(k==='p'){ $('#app').classList.toggle('panel-hidden'); window.__paintPanel?.(); }
     else if(k==='i'){ $('#insMin')?.click(); }
+    else if(k==='escape' && isNarrow() && !$('#app').classList.contains('panel-hidden')){
+      $('#app').classList.add('panel-hidden'); window.__paintPanel?.();
+    }
   });
 
   let last=performance.now(), onFrame=null;
@@ -383,6 +387,27 @@ export function boot(opts={}){
 }
 
 /* ─────────────────────────── chrome wiring ─────────────────────────── */
+export const REPO = 'https://github.com/Tornadoguy69/afterglow';
+const GH_PATH = 'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 '+
+  '0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53'+
+  '.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95'+
+  '0-.87.31-1.59.82-2.15-.05-.13-.36-.95.08-1.98 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36'+
+  '.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.03.13 1.85.08 1.98.51.56.82 1.27.82 2.15 0 3.07-1.87 '+
+  '3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.99 7.99 0 0 0 16 8'+
+  'c0-4.42-3.58-8-8-8Z';
+
+/* A link to the source, styled as one of the icon buttons. Exported so the static
+   pages render an identical control. */
+export function repoLink(){
+  const a = el('a','iconbtn');
+  a.href = REPO; a.target = '_blank'; a.rel = 'noopener';
+  a.title = 'Source on GitHub';
+  a.setAttribute('aria-label', a.title);
+  a.innerHTML = '<svg class="ico" viewBox="0 0 16 16" width="15" height="15" '+
+                'fill="currentColor" aria-hidden="true"><path d="'+GH_PATH+'"/></svg>';
+  return a;
+}
+
 /* An icon button whose glyph animates when its meaning changes. Exported so the
    static pages can use exactly the same control. */
 export function iconButton({icon, title, onClick}){
@@ -437,7 +462,7 @@ function wireChrome(){
     };
     window.__paintPanel = paintPanel;          // so the P shortcut can keep it in sync
 
-    tools.append(theme,pan);
+    tools.append(repoLink(),theme,pan);
     brand.appendChild(tools);
   }
   if(!document.querySelector('.skip')){
@@ -447,11 +472,45 @@ function wireChrome(){
   }
 }
 
+/* Narrow breakpoint matches the CSS mobile layout in style.css. */
+function isNarrow(){ return matchMedia('(max-width:820px)').matches; }
+
+/* On phones the side panel would crush the canvas. Start with it hidden as a
+   bottom sheet the user opens with the « button, and collapse the inspector so
+   it doesn't cover half the viewport. Re-apply when the viewport crosses the
+   breakpoint (rotation, split-screen). */
+function wireMobileLayout(){
+  const app = $('#app');
+  const insp = $('#inspector');
+  const min = $('#insMin');
+  const apply = ()=>{
+    if(!app) return;
+    if(isNarrow()){
+      /* Canvas first: panel is a bottom sheet the user opens deliberately. */
+      app.classList.add('panel-hidden');
+      if(insp && !insp.classList.contains('min')){
+        insp.classList.add('min');
+        if(min){ min.textContent='▸'; min.title='Expand'; }
+      }
+    } else {
+      /* Back to desktop — don't leave the side panel stuck closed. */
+      app.classList.remove('panel-hidden');
+    }
+    window.__paintPanel?.();
+  };
+  apply();
+  const mq = matchMedia('(max-width:820px)');
+  if(mq.addEventListener) mq.addEventListener('change', apply);
+  else if(mq.addListener) mq.addListener(apply); // Safari < 14
+}
+
 function wireInspector(){
   const insp=$('#inspector'), bar=$('#insBar'); if(!insp||!bar) return;
   let dx=0,dy=0,on=false;
   bar.addEventListener('pointerdown',e=>{
     if(e.target.closest('.ib')) return;
+    /* Dragging a floating card on a phone fights with touch-scroll; skip it. */
+    if(isNarrow()) return;
     on=true; insp.classList.add('drag');
     const r=insp.getBoundingClientRect(), s=$('#stage').getBoundingClientRect();
     dx=e.clientX-r.left; dy=e.clientY-r.top;
@@ -472,7 +531,7 @@ function wireInspector(){
     const m=insp.classList.toggle('min'); min.textContent=m?'▸':'▾';
   });
   if(rst) rst.addEventListener('click',()=>{
-    insp.style.left='auto'; insp.style.right='16px'; insp.style.top='16px';
+    insp.style.left='auto'; insp.style.right=isNarrow()?'8px':'16px'; insp.style.top=isNarrow()?'8px':'16px';
     insp.classList.remove('min'); if(min) min.textContent='▾';
   });
 }

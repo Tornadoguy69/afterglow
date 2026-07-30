@@ -75,6 +75,20 @@
   footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);
     font-family:var(--mono);font-size:11px;color:var(--ink-4);line-height:1.8}
   footer a{color:var(--ink-3)}
+
+  @media (max-width:720px){
+    .wrap{padding:20px 16px 72px}
+    .topbar{margin-bottom:28px;flex-wrap:wrap;gap:10px}
+    .lede{font-size:15.5px}
+    h2{margin-top:36px}
+    pre{padding:12px 14px;font-size:11px}
+    .detail{padding:16px}
+    .cards{grid-template-columns:1fr}
+    .check label{padding:11px 10px}
+  }
+  @media (max-width:400px){
+    .wrap{padding:14px 12px 56px}
+  }
 </style>
 
 <div class="wrap">
