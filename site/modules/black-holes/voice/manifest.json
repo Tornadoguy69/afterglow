@@ -1,0 +1,74 @@
+[
+ {
+  "i": 0,
+  "file": "voice/beat-01.mp3",
+  "dur": 11.57,
+  "text": "Everything you can see on this screen comes out of one equation. The radius of a black hole is two G M over c squared — and that is it. Give me the mass and I can tell you the size, exactly."
+ },
+ {
+  "i": 1,
+  "file": "voice/beat-02.mp3",
+  "dur": 12.07,
+  "text": "This is Sagittarius A star, the black hole at the centre of our own galaxy. Four million times the mass of the Sun. The Event Horizon Telescope photographed it in twenty twenty two."
+ },
+ {
+  "i": 2,
+  "file": "voice/beat-03.mp3",
+  "dur": 6.02,
+  "text": "Let me take the glowing disk away, so there is nothing left but the hole and the stars behind it."
+ },
+ {
+  "i": 3,
+  "file": "voice/beat-04.mp3",
+  "dur": 13.03,
+  "text": "Look carefully at the edge. The starfield does not stop at the black circle. It wraps around it. You are seeing stars that are physically behind the black hole, their light bent around the sides and delivered to your eye."
+ },
+ {
+  "i": 4,
+  "file": "voice/beat-05.mp3",
+  "dur": 11.11,
+  "text": "Every pixel on this screen is a light ray traced backwards through curved spacetime to find out where it really came from. It is not a picture of a black hole. It is a calculation of one."
+ },
+ {
+  "i": 5,
+  "file": "voice/beat-06.mp3",
+  "dur": 19.68,
+  "text": "That thin bright circle is the photon ring. Light can actually orbit the black hole there, going round and round before escaping towards you. And notice the dark patch is bigger than the horizon itself — about two and a half times bigger — because the hole bends light around itself and blocks more sky than it physically covers."
+ },
+ {
+  "i": 6,
+  "file": "voice/beat-07.mp3",
+  "dur": 9.02,
+  "text": "Now watch what mass actually does. This is a stellar black hole, ten times the Sun, the kind left behind when a heavy star collapses."
+ },
+ {
+  "i": 7,
+  "file": "voice/beat-08.mp3",
+  "dur": 15.65,
+  "text": "Its horizon is about thirty kilometres across. You could drive around it in an hour. But look at the tidal stretch in the readout — the difference in pull between your head and your feet. It is enormous. A small black hole would pull you apart long before you reached it."
+ },
+ {
+  "i": 8,
+  "file": "voice/beat-09.mp3",
+  "dur": 7.7,
+  "text": "Now M eighty seven star, six and a half thousand million solar masses, the first black hole ever photographed."
+ },
+ {
+  "i": 9,
+  "file": "voice/beat-10.mp3",
+  "dur": 15.6,
+  "text": "This one is larger than our entire solar system. And here is the counterintuitive part. The readout now says crossing the horizon is survivable. The bigger the black hole, the gentler the edge. You would cross it without noticing anything at all."
+ },
+ {
+  "i": 10,
+  "file": "voice/beat-11.mp3",
+  "dur": 16.46,
+  "text": "One more thing worth knowing. Black holes do slowly evaporate — Hawking showed that in nineteen seventy four. But look at the evaporation time. For anything this size it is longer than the age of the universe by a factor with sixty zeroes after it. These are not going anywhere."
+ },
+ {
+  "i": 11,
+  "file": "voice/beat-12.mp3",
+  "dur": 5.28,
+  "text": "The mass slider is yours. Everything on screen recomputes from that one number."
+ }
+]

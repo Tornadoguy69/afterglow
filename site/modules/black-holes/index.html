@@ -43,6 +43,7 @@
 
 <script type="module">
 import { THREE, boot, ui, Plot, PAL, el, fmt, sci } from '../../engine/engine.js';
+import { tour } from '../../engine/tour.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PHYSICS.  Everything scales with one number: the Schwarzschild radius.
@@ -237,8 +238,11 @@ panel.appendChild(ui.section('Mass', sM.node,
     P.M=PRESETS[k].M; sM.set(P.M); update();
   })))));
 panel.appendChild(ui.section('Measurements', ro.node));
+/* Held in a variable so the guided tour can flip it and keep the checkbox honest. */
+const tDisk = ui.toggle({label:'Accretion disk', value:true,
+  on:v=>{P.disk=v; uni.uDiskOn.value=v?1:0;}});
 panel.appendChild(ui.section('Display',
-  ui.toggle({label:'Accretion disk', value:true, on:v=>{P.disk=v; uni.uDiskOn.value=v?1:0;}}).node,
+  tDisk.node,
   ui.slider({label:'Integration steps', min:80, max:400, step:10, value:180, d:0,
     on:v=>{uni.uSteps.value=v;}}).node,
   ui.note('Lower the step count if the frame rate suffers. Below ~140 the photon ring starts '+
@@ -344,4 +348,78 @@ app.onFrame(dt=>{
 
 app.onThemeChange(update);   // repaint the plot when the theme flips
 update();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GUIDED TOUR
+   ═══════════════════════════════════════════════════════════════════════════ */
+const setM    = v => { P.M=v; sM.set(v); update(); };
+const setDisk = v => { P.disk=v; tDisk.set(v); uni.uDiskOn.value = v?1:0; };
+
+tour(app, {beats:[
+{ say:'Everything you can see on this screen comes out of one equation. '+
+      'The radius of a black hole is two G M over c squared — and that is it. '+
+      'Give me the mass and I can tell you the size, exactly.',
+  hold:14, cam:{pos:[0,4.2,17], target:[0,0,0], ms:1800},
+  run(){ setDisk(true); setM(4.297e6); } },
+
+{ say:'This is Sagittarius A star, the black hole at the centre of our own galaxy. '+
+      'Four million times the mass of the Sun. The Event Horizon Telescope photographed it '+
+      'in twenty twenty two.',
+  hold:13 },
+
+{ say:'Let me take the glowing disk away, so there is nothing left but the hole and '+
+      'the stars behind it.',
+  hold:8,
+  at:[{t:4.5, do(){ setDisk(false); }}] },
+
+{ say:'Look carefully at the edge. The starfield does not stop at the black circle. '+
+      'It wraps around it. You are seeing stars that are physically behind the black hole, '+
+      'their light bent around the sides and delivered to your eye.',
+  hold:15, cam:{pos:[0,2.4,11], target:[0,0,0], ms:3000} },
+
+{ say:'Every pixel on this screen is a light ray traced backwards through curved spacetime '+
+      'to find out where it really came from. It is not a picture of a black hole. '+
+      'It is a calculation of one.',
+  hold:14 },
+
+{ say:'That thin bright circle is the photon ring. Light can actually orbit the black hole '+
+      'there, going round and round before escaping towards you. '+
+      'And notice the dark patch is bigger than the horizon itself — about two and a half '+
+      'times bigger — because the hole bends light around itself and blocks more sky '+
+      'than it physically covers.',
+  hold:20,
+  at:[{t:8.0, do(){ setDisk(true); }}] },
+
+{ say:'Now watch what mass actually does. This is a stellar black hole, ten times the Sun, '+
+      'the kind left behind when a heavy star collapses.',
+  hold:10, cam:{pos:[0,4.2,17], target:[0,0,0], ms:2400},
+  at:[{t:4.0, do(){ setM(10); }}] },
+
+{ say:'Its horizon is about thirty kilometres across. You could drive around it in an hour. '+
+      'But look at the tidal stretch in the readout — the difference in pull between your head '+
+      'and your feet. It is enormous. A small black hole would pull you apart '+
+      'long before you reached it.',
+  hold:17 },
+
+{ say:'Now M eighty seven star, six and a half thousand million solar masses, '+
+      'the first black hole ever photographed.',
+  hold:9,
+  at:[{t:4.5, do(){ setM(6.5e9); }}] },
+
+{ say:'This one is larger than our entire solar system. And here is the counterintuitive part. '+
+      'The readout now says crossing the horizon is survivable. '+
+      'The bigger the black hole, the gentler the edge. '+
+      'You would cross it without noticing anything at all.',
+  hold:17 },
+
+{ say:'One more thing worth knowing. Black holes do slowly evaporate — Hawking showed that '+
+      'in nineteen seventy four. But look at the evaporation time. '+
+      'For anything this size it is longer than the age of the universe by a factor with '+
+      'sixty zeroes after it. These are not going anywhere.',
+  hold:18 },
+
+{ say:'The mass slider is yours. Everything on screen recomputes from that one number.',
+  hold:8,
+  run(){ setM(4.297e6); } }
+]});
 </script>

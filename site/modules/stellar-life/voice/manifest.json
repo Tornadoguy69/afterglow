@@ -1,0 +1,80 @@
+[
+ {
+  "i": 0,
+  "file": "voice/beat-01.mp3",
+  "dur": 9.77,
+  "text": "A star is a fight between two things. Gravity pulling inward, and the heat of nuclear fusion pushing outward. For most of its life the fight is a draw."
+ },
+ {
+  "i": 1,
+  "file": "voice/beat-02.mp3",
+  "dur": 10.32,
+  "text": "And astonishingly, one single number decides how the whole story goes. Not what it is made of. Not where it is. Just how much it weighed the day it formed."
+ },
+ {
+  "i": 2,
+  "file": "voice/beat-03.mp3",
+  "dur": 8.59,
+  "text": "This one weighs exactly as much as our Sun. It is condensing out of a cold cloud of gas and dust, and it has not started burning yet."
+ },
+ {
+  "i": 3,
+  "file": "voice/beat-04.mp3",
+  "dur": 5.16,
+  "text": "Now let its life run. Watch the marker on the chart, and watch the clock."
+ },
+ {
+  "i": 4,
+  "file": "voice/beat-05.mp3",
+  "dur": 13.58,
+  "text": "It settles onto the long diagonal band called the main sequence, and it stays there for ten thousand million years. That is nine tenths of its entire existence spent doing one thing: turning hydrogen into helium in its core."
+ },
+ {
+  "i": 5,
+  "file": "voice/beat-06.mp3",
+  "dur": 9.29,
+  "text": "When the hydrogen in the core runs out, the core contracts and the outer layers balloon. It becomes a red giant, big enough to swallow the Earth."
+ },
+ {
+  "i": 6,
+  "file": "voice/beat-07.mp3",
+  "dur": 11.47,
+  "text": "Then it sheds those outer layers into space and what is left is the naked core. A white dwarf, about the size of the Earth but as heavy as the Sun, cooling quietly for the rest of time."
+ },
+ {
+  "i": 7,
+  "file": "voice/beat-08.mp3",
+  "dur": 4.99,
+  "text": "Now here is what changes everything. I am going to make the star thirty times heavier."
+ },
+ {
+  "i": 8,
+  "file": "voice/beat-09.mp3",
+  "dur": 15.62,
+  "text": "Thirty times the fuel. But look at the lifetime in the readout. It does not live thirty times longer. It lives about six million years instead of ten thousand million. A star this heavy burns through everything roughly two thousand times faster than the Sun."
+ },
+ {
+  "i": 9,
+  "file": "voice/beat-10.mp3",
+  "dur": 13.73,
+  "text": "And it does not end quietly. Above about eight times the Sun's mass the core collapses, the star detonates as a supernova, and what is left behind is a neutron star, or if it is heavy enough, a black hole."
+ },
+ {
+  "i": 10,
+  "file": "voice/beat-11.mp3",
+  "dur": 4.13,
+  "text": "Now go the other way. Down to a fifth of the Sun's mass."
+ },
+ {
+  "i": 11,
+  "file": "voice/beat-12.mp3",
+  "dur": 16.42,
+  "text": "This one is faint, cool and red, and it is stingy. Its predicted lifetime is longer than the current age of the universe by a factor of a hundred. Not one star this small has ever died. There has not been enough time. Every single one ever born is still burning."
+ },
+ {
+  "i": 12,
+  "file": "voice/beat-13.mp3",
+  "dur": 10.97,
+  "text": "That is the whole story. Drag the mass slider yourself and watch the ending change — white dwarf, neutron star, black hole. Everything follows from one number."
+ }
+]

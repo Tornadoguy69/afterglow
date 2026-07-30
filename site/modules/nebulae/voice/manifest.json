@@ -1,0 +1,74 @@
+[
+ {
+  "i": 0,
+  "file": "voice/beat-01.mp3",
+  "dur": 9.14,
+  "text": "Those spectacular colours in space photographs are real. But here is the thing almost nobody is told. The cloud has no colour of its own."
+ },
+ {
+  "i": 1,
+  "file": "voice/beat-02.mp3",
+  "dur": 9.82,
+  "text": "It is the same gas every time. Mostly hydrogen, a little helium, a trace of dust. What decides the colour is the star sitting inside it."
+ },
+ {
+  "i": 2,
+  "file": "voice/beat-03.mp3",
+  "dur": 13.01,
+  "text": "This star is at forty four thousand degrees. That is hot enough to pour out ultraviolet light below ninety one point two nanometres — and that is exactly the energy it takes to rip the electron off a hydrogen atom."
+ },
+ {
+  "i": 3,
+  "file": "voice/beat-04.mp3",
+  "dur": 13.58,
+  "text": "The electrons get torn away, then find their way back, and every time one falls back it gives out a photon of that deep red we call hydrogen alpha. That is an emission nebula. The Orion Nebula is the famous one."
+ },
+ {
+  "i": 4,
+  "file": "voice/beat-05.mp3",
+  "dur": 11.57,
+  "text": "The bright ring marks the Strömgren radius — the boundary where ionisation and recombination exactly balance. Inside it the gas glows. Outside it, nothing."
+ },
+ {
+  "i": 5,
+  "file": "voice/beat-06.mp3",
+  "dur": 8.06,
+  "text": "Now let me cool the star down to eighteen thousand degrees. Still hot. Still bright. Watch what happens to the colour."
+ },
+ {
+  "i": 6,
+  "file": "voice/beat-07.mp3",
+  "dur": 19.54,
+  "text": "The red is gone. This star simply cannot make ultraviolet hard enough to ionise hydrogen, so the gas never lights up. All you get is dust scattering the starlight, and dust scatters blue more efficiently than red — the same reason the sky is blue. That is a reflection nebula. The Pleiades sit in one."
+ },
+ {
+  "i": 7,
+  "file": "voice/beat-08.mp3",
+  "dur": 2.59,
+  "text": "And now take the star away entirely."
+ },
+ {
+  "i": 8,
+  "file": "voice/beat-09.mp3",
+  "dur": 10.85,
+  "text": "A dark nebula. The same cloud, unchanged, but with nothing to light it. You only see it because it blocks the stars behind. The Horsehead is one of these."
+ },
+ {
+  "i": 9,
+  "file": "voice/beat-10.mp3",
+  "dur": 7.82,
+  "text": "One last thing, and it catches people out. Put the star back and let me make the gas much denser — a hundred times denser."
+ },
+ {
+  "i": 10,
+  "file": "voice/beat-11.mp3",
+  "dur": 16.06,
+  "text": "The glowing bubble got smaller, not bigger. More gas means more atoms recombining every second, so the star can only keep a smaller volume ionised. The radius falls off as density to the minus two thirds. More fuel, less fire."
+ },
+ {
+  "i": 11,
+  "file": "voice/beat-12.mp3",
+  "dur": 8.54,
+  "text": "Three completely different objects in every astronomy book, and the difference between them is one star's temperature. The sliders are yours."
+ }
+]

@@ -43,6 +43,7 @@
 
 <script type="module">
 import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture, deepField } from '../../engine/engine.js';
+import { tour } from '../../engine/tour.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PHYSICS
@@ -303,4 +304,73 @@ let t=0;
 app.onFrame(dt=>{ t+=dt; scene.rotation.y=Math.sin(t*0.06)*0.28; });
 app.onThemeChange(update);   // repaint the plot when the theme flips
 update();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GUIDED TOUR
+   ═══════════════════════════════════════════════════════════════════════════ */
+const setT    = v => { P.T=v; sT.set(v); update(); };
+const setN    = v => { P.n=v; sN.set(v); update(); };
+const setStar = v => { P.hasStar=v; tS.set(v); update(); };
+
+tour(app, {beats:[
+{ say:'Those spectacular colours in space photographs are real. But here is the thing '+
+      'almost nobody is told. The cloud has no colour of its own.',
+  hold:11, cam:{pos:[0,18,72], target:[0,0,0], ms:1800},
+  run(){ setStar(true); setT(38000); setN(100); } },
+
+{ say:'It is the same gas every time. Mostly hydrogen, a little helium, a trace of dust. '+
+      'What decides the colour is the star sitting inside it.',
+  hold:11 },
+
+{ say:'This star is at forty four thousand degrees. That is hot enough to pour out ultraviolet '+
+      'light below ninety one point two nanometres — and that is exactly the energy it takes '+
+      'to rip the electron off a hydrogen atom.',
+  hold:15,
+  at:[{t:5.0, do(){ setT(44000); }}] },
+
+{ say:'The electrons get torn away, then find their way back, and every time one falls back it '+
+      'gives out a photon of that deep red we call hydrogen alpha. '+
+      'That is an emission nebula. The Orion Nebula is the famous one.',
+  hold:15, cam:{pos:[0,12,50], target:[0,0,0], ms:2800} },
+
+{ say:'The bright ring marks the Strömgren radius — the boundary where ionisation and '+
+      'recombination exactly balance. Inside it the gas glows. Outside it, nothing.',
+  hold:12 },
+
+{ say:'Now let me cool the star down to eighteen thousand degrees. Still hot. Still bright. '+
+      'Watch what happens to the colour.',
+  hold:9,
+  at:[{t:5.5, do(){ setT(18000); }}] },
+
+{ say:'The red is gone. This star simply cannot make ultraviolet hard enough to ionise '+
+      'hydrogen, so the gas never lights up. All you get is dust scattering the starlight, '+
+      'and dust scatters blue more efficiently than red — the same reason the sky is blue. '+
+      'That is a reflection nebula. The Pleiades sit in one.',
+  hold:19, cam:{pos:[0,16,64], target:[0,0,0], ms:2600} },
+
+{ say:'And now take the star away entirely.',
+  hold:5,
+  at:[{t:2.8, do(){ setStar(false); }}] },
+
+{ say:'A dark nebula. The same cloud, unchanged, but with nothing to light it. '+
+      'You only see it because it blocks the stars behind. The Horsehead is one of these.',
+  hold:13 },
+
+{ say:'One last thing, and it catches people out. Put the star back and let me make the gas '+
+      'much denser — a hundred times denser.',
+  hold:10,
+  run(){ setStar(true); setT(44000); },
+  at:[{t:6.0, do(){ setN(1e4); }}] },
+
+{ say:'The glowing bubble got smaller, not bigger. More gas means more atoms recombining every '+
+      'second, so the star can only keep a smaller volume ionised. '+
+      'The radius falls off as density to the minus two thirds. '+
+      'More fuel, less fire.',
+  hold:16 },
+
+{ say:'Three completely different objects in every astronomy book, and the difference between '+
+      'them is one star\'s temperature. The sliders are yours.',
+  hold:11,
+  run(){ setN(100); setT(38000); } }
+]});
 </script>

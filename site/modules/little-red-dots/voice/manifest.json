@@ -1,0 +1,80 @@
+[
+ {
+  "i": 0,
+  "file": "voice/beat-01.mp3",
+  "dur": 9.46,
+  "text": "This one is different from everything else on this site. Every other page explains something we understand. This page is about something nobody understands yet."
+ },
+ {
+  "i": 1,
+  "file": "voice/beat-02.mp3",
+  "dur": 18.77,
+  "text": "In twenty twenty four, the James Webb Space Telescope found these. Small, extremely red objects, sitting at a distance where the universe was only a few hundred million years old. Nobody predicted them. Over three hundred are now known and there is still no agreed explanation for what they are."
+ },
+ {
+  "i": 2,
+  "file": "voice/beat-03.mp3",
+  "dur": 14.45,
+  "text": "Start with what is not in dispute. Look at the spectrum. It is very red in visible light, but it turns blue again in the ultraviolet. That V shape is the signature, and it is strange — ordinary dusty galaxies do not do that."
+ },
+ {
+  "i": 3,
+  "file": "voice/beat-04.mp3",
+  "dur": 12.53,
+  "text": "They are compact. Smaller than about a hundred parsecs, which is tiny for something this bright. And they show broad hydrogen emission lines — gas moving at a thousand to three thousand kilometres a second."
+ },
+ {
+  "i": 4,
+  "file": "voice/beat-05.mp3",
+  "dur": 8.45,
+  "text": "Normally, gas moving that fast means one thing: it is whipping around a black hole. That would settle it. Except for the next fact."
+ },
+ {
+  "i": 5,
+  "file": "voice/beat-06.mp3",
+  "dur": 15,
+  "text": "There are no X-rays. Not a trace, even when you stack hundreds of images together. A black hole feeding hard enough to make those emission lines should be pouring out X-rays, and it simply is not. That contradiction is the whole problem."
+ },
+ {
+  "i": 6,
+  "file": "voice/beat-07.mp3",
+  "dur": 13.27,
+  "text": "So here are four serious explanations, all of them live in the current literature. The first says these are massive black hole seeds that formed straight out of collapsing gas, skipping the usual star-and-supernova route."
+ },
+ {
+  "i": 7,
+  "file": "voice/beat-08.mp3",
+  "dur": 12.12,
+  "text": "Look at the scorecard. It explains most of what we see, and it contradicts the X-rays and the lack of flickering. Note that. It is not a bad theory — it just does not account for everything."
+ },
+ {
+  "i": 8,
+  "file": "voice/beat-09.mp3",
+  "dur": 7.94,
+  "text": "The second says these are ordinary black holes feeding far above the rate you would normally think possible, in short violent bursts."
+ },
+ {
+  "i": 9,
+  "file": "voice/beat-10.mp3",
+  "dur": 13.87,
+  "text": "The third is the strangest and currently the most talked about. A black hole wrapped inside an enormous envelope of gas so thick that it looks like a single vast star from outside. The envelope would swallow the X-rays."
+ },
+ {
+  "i": 10,
+  "file": "voice/beat-11.mp3",
+  "dur": 7.61,
+  "text": "And the fourth says there is no black hole at all — just extraordinarily massive stars packed unbelievably tightly together."
+ },
+ {
+  "i": 11,
+  "file": "voice/beat-12.mp3",
+  "dur": 11.81,
+  "text": "Click between them and watch the scorecard change. That is the honest state of it. Four different pictures of what these objects are, each one accounting for some of the evidence and tripping over the rest."
+ },
+ {
+  "i": 12,
+  "file": "voice/beat-13.mp3",
+  "dur": 11.76,
+  "text": "I am not going to tell you which is right, because nobody knows. Expect this page to be wrong within a year. That is not a flaw in the page — that is what an open problem looks like while it is still open."
+ }
+]

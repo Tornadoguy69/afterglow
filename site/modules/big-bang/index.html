@@ -43,6 +43,7 @@
 
 <script type="module">
 import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture } from '../../engine/engine.js';
+import { tour } from '../../engine/tour.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THERMAL HISTORY.
@@ -294,4 +295,83 @@ app.onFrame(dt=>{
 });
 app.onThemeChange(update);   // repaint the plot when the theme flips
 update();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GUIDED TOUR
+   ═══════════════════════════════════════════════════════════════════════════ */
+const setPlay  = v => { P.play=v; playBtn.textContent = v?'❚❚  Pause':'▶  Run it forward'; };
+const setTime  = t => { P.logt=Math.log10(t); sT.set(P.logt); setPlay(false); update(); };
+const setEpoch = n => setTime(EPOCHS.find(x=>x.name===n).t);
+
+tour(app, {beats:[
+{ say:'The early universe is not really a place. It is a temperature. '+
+      'Almost everything that happened, happened because it was cooling down.',
+  hold:11, cam:{pos:[0,30,120], target:[0,0,0], ms:1800},
+  run(){ setTime(1e-36); } },
+
+{ say:'At a millionth of a millionth of a millionth of a millionth of a millionth of a second, '+
+      'the whole observable universe is smaller than an atom and hotter than anything that has '+
+      'existed since. Nothing can hold together. Particles that touch simply blow apart.',
+  hold:19 },
+
+{ say:'And then it expands, and expanding means cooling, and cooling means things can '+
+      'finally start sticking. Every milestone from here on is just the moment the temperature '+
+      'drops below some binding energy.',
+  hold:15 },
+
+{ say:'At a hundred thousandth of a second, quarks stop flying free and lock together into '+
+      'protons and neutrons. Every atom in your body contains particles that formed '+
+      'in that instant and have never come apart since.',
+  hold:16,
+  at:[{t:4.0, do(){ setTime(1e-5); }}] },
+
+{ say:'Three minutes in. Now it is cool enough for protons and neutrons to stick, '+
+      'and the universe spends about twenty minutes building the lightest elements.',
+  hold:12, cam:{pos:[0,26,96], target:[0,0,0], ms:2600},
+  at:[{t:3.5, do(){ setEpoch('Nucleosynthesis'); }}] },
+
+{ say:'It makes hydrogen, helium and a trace of lithium, and then stops. '+
+      'That is a real prediction with a real number attached — about a quarter of all the '+
+      'ordinary matter in the universe should be helium. Go and measure a distant gas cloud '+
+      'today and that is exactly what you find. Nobody watched it happen. The evidence is '+
+      'still sitting there.',
+  hold:23 },
+
+{ say:'For the next three hundred and eighty thousand years the universe is an opaque fog. '+
+      'Electrons are still loose, and loose electrons scatter light, '+
+      'so a photon cannot travel any distance at all before being knocked sideways.',
+  hold:16 },
+
+{ say:'Then, at three thousand degrees, electrons finally settle onto nuclei and the fog clears '+
+      'all at once. The universe becomes transparent, and the light released at that moment '+
+      'is still travelling.',
+  hold:15, cam:{pos:[0,40,190], target:[0,0,0], ms:3000},
+  at:[{t:3.5, do(){ setEpoch('Recombination'); }}] },
+
+{ say:'We can see it. It is the cosmic microwave background — the oldest light there is, '+
+      'stretched by the expansion from visible orange down to microwaves. '+
+      'It is a photograph of the universe at three hundred and eighty thousand years old, '+
+      'and it is the hard wall on what light can ever show us.',
+  hold:20 },
+
+{ say:'Run forward to today, and everything you have ever seen was assembled after that.',
+  hold:8,
+  at:[{t:3.0, do(){ setEpoch('Now'); }}] },
+
+{ say:'Now the part I want to be honest about. Slide back to the very beginning. '+
+      'Watch the row that says whether we can observe it.',
+  hold:11,
+  at:[{t:6.0, do(){ setTime(1e-43); }}] },
+
+{ say:'Direct evidence stops at recombination. Solid but indirect evidence reaches back to '+
+      'about one second. Before a millionth of a millionth of a second we are beyond any energy '+
+      'a collider has ever reached, and the first instant has no accepted theory at all.',
+  hold:19 },
+
+{ say:'So the story is well tested for the part where we can check it, and honestly '+
+      'extrapolated for the part where we cannot. Those are not the same thing, '+
+      'and the readout tells you which is which the whole way along.',
+  hold:15,
+  run(){ setEpoch('Now'); } }
+]});
 </script>

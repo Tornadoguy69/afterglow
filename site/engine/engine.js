@@ -358,6 +358,42 @@ export function boot(opts={}){
   canvas.addEventListener('pointerup',endPinchPtr);
   canvas.addEventListener('pointercancel',endPinchPtr);
 
+  /* Scripted camera moves for the guided tour. Kept here rather than in tour.js
+     because it has to cooperate with ZOOM and with OrbitControls' damping, and
+     because any user input must be able to interrupt it. */
+  const FLY = {on:false, t:0, dur:0,
+    p0:new THREE.Vector3(), p1:new THREE.Vector3(),
+    t0:new THREE.Vector3(), t1:new THREE.Vector3()};
+  function flyTo(pos, tgt, ms=2000){
+    ZOOM.target = null;
+    FLY.p0.copy(camera.position); FLY.t0.copy(controls.target);
+    FLY.p1.fromArray(pos); FLY.t1.fromArray(tgt||[0,0,0]);
+    /* Respect the module's own distance clamps — a beat should never be able to
+       park the camera somewhere the user cannot get back from. */
+    const off = FLY.p1.clone().sub(FLY.t1);
+    const len = off.length();
+    if(len > 1e-6){
+      const cl = Math.min(dist[1], Math.max(dist[0], len));
+      if(cl !== len) FLY.p1.copy(FLY.t1).add(off.multiplyScalar(cl/len));
+    }
+    FLY.dur = Math.max(0, ms)/1000; FLY.t = 0; FLY.on = true;
+    if(FLY.dur <= 0){
+      camera.position.copy(FLY.p1); controls.target.copy(FLY.t1); FLY.on=false;
+    }
+  }
+  function applyFly(dt){
+    if(!FLY.on) return;
+    FLY.t += dt;
+    const u = Math.min(1, FLY.t/FLY.dur);
+    const e = u<0.5 ? 4*u*u*u : 1-Math.pow(-2*u+2,3)/2;      // easeInOutCubic
+    camera.position.lerpVectors(FLY.p0, FLY.p1, e);
+    controls.target.lerpVectors(FLY.t0, FLY.t1, e);
+    if(u>=1) FLY.on=false;
+  }
+  /* Touching the scene wins over the script, always. */
+  controls.addEventListener('start', ()=>{ FLY.on=false; });
+  canvas.addEventListener('wheel', ()=>{ FLY.on=false; }, {passive:true});
+
   function applyZoom(dt){
     if(ZOOM.target==null) return;
     const off=camera.position.clone().sub(controls.target);
@@ -398,8 +434,11 @@ export function boot(opts={}){
   addEventListener('keydown',e=>{
     if(/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     const k=e.key.toLowerCase();
+    /* The tour owns these keys while it is running. */
+    if(document.documentElement.classList.contains('touring') &&
+       (k==='escape'||k===' '||e.key==='ArrowLeft'||e.key==='ArrowRight'||k==='m')) return;
     if(k==='r'){
-      ZOOM.target=null;
+      ZOOM.target=null; FLY.on=false;
       camera.position.copy(home.pos); controls.target.copy(home.tgt); controls.update();
     }
     else if(k==='d') setTheme(getTheme()==='dark'?'light':'dark');
@@ -416,6 +455,7 @@ export function boot(opts={}){
     const dt=Math.min(0.05,(now-last)/1000); last=now;
     resize();                       // cheap: only acts when the layout box actually changed
     if(onFrame) onFrame(dt);
+    applyFly(dt);
     controls.update(); applyZoom(dt);
     composer.render();
   })(last);
@@ -426,10 +466,11 @@ export function boot(opts={}){
     setCaption(html){ const c=$('#caption'); if(c) c.innerHTML=html; },
     setInsetTitle(t){ const n=$('#insTitle'); if(n) n.textContent=t; },
     onFrame(fn){ onFrame=fn; },
+    flyTo,
     /* Register the module's draw function so its 2D plot repaints on theme change —
        the canvas is owned by the module, so the engine cannot repaint it itself. */
     onThemeChange(fn){ onThemeChange(fn); },
-    resetView(){ ZOOM.target=null; camera.position.copy(home.pos);
+    resetView(){ ZOOM.target=null; FLY.on=false; camera.position.copy(home.pos);
                  controls.target.copy(home.tgt); controls.update(); }
   };
 }

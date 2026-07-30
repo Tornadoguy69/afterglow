@@ -1,0 +1,92 @@
+[
+ {
+  "i": 0,
+  "file": "voice/beat-01.mp3",
+  "dur": 7.87,
+  "text": "This is the Milky Way from above, and somewhere on it is the question everybody actually wants answered. Are we the only ones?"
+ },
+ {
+  "i": 1,
+  "file": "voice/beat-02.mp3",
+  "dur": 15,
+  "text": "In nineteen sixty one Frank Drake wrote down an equation for it. Seven numbers multiplied together. How many stars form, how many have planets, how many of those could hold life, and so on down to how long a civilisation stays detectable."
+ },
+ {
+  "i": 2,
+  "file": "voice/beat-03.mp3",
+  "dur": 9.22,
+  "text": "The equation is not the interesting part. Where the numbers come from is. Look at the panel — it is split in two, and that split is the whole story."
+ },
+ {
+  "i": 3,
+  "file": "voice/beat-04.mp3",
+  "dur": 17.52,
+  "text": "The top three are measured. We actually know them now, which Drake did not. Stars form in this galaxy at about one and a half a year. Essentially every star has planets — microlensing settled that. And Kepler told us roughly what fraction have a rocky world at the right distance."
+ },
+ {
+  "i": 4,
+  "file": "voice/beat-05.mp3",
+  "dur": 10.54,
+  "text": "Now watch this. I am going to take those three measured terms and swing them across their entire plausible range, as far in each direction as anyone would defend."
+ },
+ {
+  "i": 5,
+  "file": "voice/beat-06.mp3",
+  "dur": 3.62,
+  "text": "And back the other way, to the most generous values."
+ },
+ {
+  "i": 6,
+  "file": "voice/beat-07.mp3",
+  "dur": 11.21,
+  "text": "The answer barely moved. A factor of a few hundred, which sounds like a lot until you see what comes next. Everything we have actually measured makes almost no difference to the result."
+ },
+ {
+  "i": 7,
+  "file": "voice/beat-08.mp3",
+  "dur": 14.74,
+  "text": "The bottom four terms are different. Not one of them has ever been measured. How often life starts on a suitable planet. How often life becomes intelligent. How often intelligence broadcasts. And how long it keeps broadcasting."
+ },
+ {
+  "i": 8,
+  "file": "voice/beat-09.mp3",
+  "dur": 12.96,
+  "text": "For the first of those we have exactly one data point, and the data point is us — which tells us nothing, because we could only be asking the question on a planet where it already happened. That is a textbook selection effect."
+ },
+ {
+  "i": 9,
+  "file": "voice/beat-10.mp3",
+  "dur": 8.28,
+  "text": "So here is the optimistic case. Every one of these numbers has been seriously argued for in print by somebody who thought hard about it."
+ },
+ {
+  "i": 10,
+  "file": "voice/beat-11.mp3",
+  "dur": 9.72,
+  "text": "Millions of civilisations, the nearest one close enough that a message could go there and back inside a human lifetime. The galaxy is crowded."
+ },
+ {
+  "i": 11,
+  "file": "voice/beat-12.mp3",
+  "dur": 5.76,
+  "text": "And now the Rare Earth case. Also argued for in print, also by serious people."
+ },
+ {
+  "i": 12,
+  "file": "voice/beat-13.mp3",
+  "dur": 5.88,
+  "text": "Nobody. Not one other civilisation in the entire galaxy. We are alone."
+ },
+ {
+  "i": 13,
+  "file": "voice/beat-14.mp3",
+  "dur": 12.94,
+  "text": "Nothing measured changed between those two answers. The three terms we actually know stayed exactly where they were. Four numbers that nobody can measure moved, and the answer swung by fourteen orders of magnitude."
+ },
+ {
+  "i": 14,
+  "file": "voice/beat-15.mp3",
+  "dur": 11.83,
+  "text": "That is the honest finding, and it is more useful than a number would be. The Drake equation does not tell us whether we are alone. It tells us precisely which four things we would need to learn to find out."
+ }
+]

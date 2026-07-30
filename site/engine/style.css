@@ -278,6 +278,86 @@ table.ro tr.big td:last-child{color:var(--clay);font-size:14px;font-weight:500}
 #tip.on{opacity:1}
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   Guided tour
+   The narration bar takes the caption's place at the foot of the stage, so the
+   simulation itself is never covered. Controls stay live throughout — the point
+   is that you watch the sliders move, then grab them yourself.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.tourbtn{
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  font-family:var(--sans);font-size:12px;font-weight:500;line-height:1;
+  background:var(--clay);color:#FCFBF8;border:1px solid var(--clay);
+  border-radius:9px;padding:0 13px;height:34px;white-space:nowrap;
+  transition:background .16s var(--ease),border-color .16s var(--ease),
+             transform .16s var(--ease),box-shadow .16s var(--ease);
+}
+.tourbtn:hover{
+  background:var(--clay-2);border-color:var(--clay-2);
+  transform:translateY(-1px);box-shadow:0 4px 14px rgba(193,97,63,.28);
+}
+.tourbtn:active{transform:translateY(0) scale(.97);box-shadow:none}
+.tourbtn .tb-ico{font-size:10px;display:block;transition:transform .3s var(--ease)}
+.tourbtn:hover .tb-ico{transform:translateX(2px)}
+/* While it is running the button reads as the way out, not another way in. */
+.tourbtn.running{background:transparent;color:var(--clay);border-color:var(--clay)}
+.tourbtn.running .tb-ico{transform:none}
+.tourbtn.running .tb-ico::before{content:'❚❚';font-size:9px}
+.tourbtn.running .tb-ico{font-size:0}
+
+#tourbar{
+  position:absolute;left:18px;right:18px;bottom:18px;z-index:20;
+  background:var(--paper);border:1px solid var(--line-2);border-radius:13px;
+  border-left:3px solid var(--clay);
+  padding:12px 16px 11px;box-shadow:var(--shadow);
+  opacity:0;transform:translateY(14px);pointer-events:none;
+  transition:opacity .3s var(--ease),transform .3s var(--ease);
+}
+#app.tour #tourbar{opacity:1;transform:none;pointer-events:auto}
+/* The narration says what the caption would have said. */
+#app.tour #caption{opacity:0;pointer-events:none;transition:opacity .25s var(--ease)}
+
+.tb-head{display:flex;align-items:center;gap:12px;margin-bottom:9px}
+.tb-dots{display:flex;gap:5px;flex-wrap:wrap;min-width:0}
+.tb-dot{
+  width:22px;height:4px;border-radius:2px;border:none;padding:0;cursor:pointer;
+  background:var(--line-2);transition:background .2s var(--ease),transform .2s var(--ease);
+}
+.tb-dot:hover{background:var(--ink-4);transform:scaleY(1.6)}
+.tb-dot.past{background:var(--ink-4)}
+.tb-dot.on{background:var(--clay);transform:scaleY(1.8)}
+.tb-count{
+  margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-4);
+  white-space:nowrap;
+}
+.tb-x{
+  background:none;border:none;cursor:pointer;color:var(--ink-4);font-size:12px;
+  line-height:1;padding:6px 7px;border-radius:6px;flex:none;
+  transition:background .14s var(--ease),color .14s var(--ease),transform .14s var(--ease);
+}
+.tb-x:hover{background:var(--line);color:var(--ink);transform:rotate(90deg)}
+
+.tb-say{
+  margin:0 0 11px;font-family:var(--serif);font-size:16px;line-height:1.55;
+  color:var(--ink);max-width:74ch;
+}
+.tb-say b{font-weight:600}
+.tb-say .cite{font-family:var(--mono);font-size:10.5px;color:var(--ink-4)}
+
+.tb-foot{display:flex;align-items:center;gap:7px}
+.tb-sp{margin-left:auto}
+.tb-b{
+  width:34px;height:34px;flex:none;display:grid;place-items:center;cursor:pointer;
+  background:var(--paper);color:var(--ink-3);border:1px solid var(--line-2);
+  border-radius:9px;font-size:12px;line-height:1;
+  transition:background .15s var(--ease),color .15s var(--ease),
+             border-color .15s var(--ease),transform .15s var(--ease);
+}
+.tb-b:hover{background:var(--paper-3);color:var(--ink);border-color:var(--ink-4);transform:translateY(-1px)}
+.tb-b:active{transform:translateY(0) scale(.92)}
+.tb-play{background:var(--clay);color:#FCFBF8;border-color:var(--clay);font-size:11px}
+.tb-play:hover{background:var(--clay-2);border-color:var(--clay-2);color:#FCFBF8}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    Mobile / narrow viewports
    Desktop is stage + fixed side panel. Below ~820px that crushes the canvas
    to a sliver (362px panel on a 390px phone). On small screens:
@@ -352,6 +432,14 @@ table.ro tr.big td:last-child{color:var(--clay);font-size:14px;font-weight:500}
   input[type=range]{height:4px}
   input[type=range]::-webkit-slider-thumb{width:18px;height:18px}
   input[type=range]::-moz-range-thumb{width:18px;height:18px}
+
+  .tourbtn{height:38px;padding:0 12px;order:-1}
+  #tourbar{left:8px;right:8px;bottom:8px;padding:10px 12px 10px;border-radius:12px}
+  .tb-say{font-size:14.5px;line-height:1.5;margin-bottom:10px;max-height:32vh;overflow:auto}
+  .tb-dot{width:14px}
+  .tb-b{width:40px;height:40px}            /* thumb-sized on touch */
+  /* The controls sheet would cover the narration; the tour drives them anyway. */
+  #app.tour #panel{transform:translateY(calc(100% + 18px));opacity:0;pointer-events:none}
 }
 
 /* Phones in portrait — tighter chrome */
@@ -363,4 +451,11 @@ table.ro tr.big td:last-child{color:var(--clay);font-size:14px;font-weight:500}
   #panel{left:4px;right:4px;bottom:4px;max-height:min(56vh,460px);border-radius:12px}
   #caption{left:6px;right:6px;bottom:6px;font-size:12px;padding:9px 11px}
   #inspector{top:6px;right:6px}
+  /* "Guided tour" pushes the title off the row at this width. */
+  .tourbtn .tb-lab{font-size:0}
+  .tourbtn .tb-lab::after{content:'Tour';font-size:12px}
+  #tourbar{left:6px;right:6px;bottom:6px}
+  .tb-say{font-size:14px}
+  /* Narration is the point on a phone — give it the whole stage. */
+  #app.tour #inspector{display:none}
 }

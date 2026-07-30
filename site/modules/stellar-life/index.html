@@ -44,6 +44,7 @@
 <script type="module">
 import { THREE, boot, ui, Plot, PAL, el, fmt, sci, deepField, starTexture }
   from '../../engine/engine.js';
+import { tour } from '../../engine/tour.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STELLAR PHYSICS — plain functions, no rendering. Everything below is a
@@ -495,4 +496,79 @@ app.onFrame(dt=>{
 
 app.onThemeChange(update);   // repaint the plot when the theme flips
 update();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GUIDED TOUR — drives the real sliders, so anything it shows can be
+   reproduced by hand the moment it finishes.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const setM    = v => { P.M=v; sM.set(v); update(); };
+const setT    = v => { P.t=v; sT.set(v); update(); };
+const setPlay = v => { P.play=v; playBtn.textContent = v?'❚❚  Pause':'▶  Play its life'; };
+
+tour(app, {beats:[
+{ say:'A star is a fight between two things. Gravity pulling inward, and the heat of nuclear '+
+      'fusion pushing outward. For most of its life the fight is a draw.',
+  hold:11, cam:{pos:[0,26,86], target:[0,0,0], ms:1800},
+  run(){ setPlay(false); setM(1); setT(0.02); } },
+
+{ say:'And astonishingly, one single number decides how the whole story goes. '+
+      'Not what it is made of. Not where it is. Just how much it weighed the day it formed.',
+  hold:12 },
+
+{ say:'This one weighs exactly as much as our Sun. It is condensing out of a cold cloud of gas '+
+      'and dust, and it has not started burning yet.',
+  hold:10, cam:{pos:[0,18,58], target:[0,0,0], ms:2600} },
+
+{ say:'Now let its life run. Watch the marker on the chart, and watch the clock.',
+  hold:7,
+  run(){ setT(0.06); setPlay(true); },
+  at:[{t:6.0, do(){ setPlay(false); setT(0.45); }}] },
+
+{ say:'It settles onto the long diagonal band called the main sequence, and it stays there for '+
+      'ten thousand million years. That is nine tenths of its entire existence spent doing '+
+      'one thing: turning hydrogen into helium in its core.',
+  hold:15 },
+
+{ say:'When the hydrogen in the core runs out, the core contracts and the outer layers balloon. '+
+      'It becomes a red giant, big enough to swallow the Earth.',
+  hold:11, cam:{pos:[0,30,120], target:[0,0,0], ms:2800},
+  at:[{t:4.5, do(){ setT(0.86); }}] },
+
+{ say:'Then it sheds those outer layers into space and what is left is the naked core. '+
+      'A white dwarf, about the size of the Earth but as heavy as the Sun, '+
+      'cooling quietly for the rest of time.',
+  hold:14,
+  at:[{t:2.5, do(){ setT(1.0); }}] },
+
+{ say:'Now here is what changes everything. I am going to make the star thirty times heavier.',
+  hold:8,
+  run(){ setT(0.45); },
+  at:[{t:5.0, do(){ setM(30); }}] },
+
+{ say:'Thirty times the fuel. But look at the lifetime in the readout. It does not live thirty '+
+      'times longer. It lives about six million years instead of ten thousand million. '+
+      'A star this heavy burns through everything roughly two thousand times faster than the Sun.',
+  hold:17 },
+
+{ say:'And it does not end quietly. Above about eight times the Sun\'s mass the core collapses, '+
+      'the star detonates as a supernova, and what is left behind is a neutron star, '+
+      'or if it is heavy enough, a black hole.',
+  hold:14, cam:{pos:[0,34,140], target:[0,0,0], ms:2600},
+  at:[{t:5.0, do(){ setT(1.0); }}] },
+
+{ say:'Now go the other way. Down to a fifth of the Sun\'s mass.',
+  hold:6,
+  run(){ setT(0.45); },
+  at:[{t:3.6, do(){ setM(0.2); }}] },
+
+{ say:'This one is faint, cool and red, and it is stingy. Its predicted lifetime is longer than '+
+      'the current age of the universe by a factor of a hundred. Not one star this small has '+
+      'ever died. There has not been enough time. Every single one ever born is still burning.',
+  hold:18 },
+
+{ say:'That is the whole story. Drag the mass slider yourself and watch the ending change — '+
+      'white dwarf, neutron star, black hole. Everything follows from one number.',
+  hold:12,
+  run(){ setM(1); setT(0.45); } }
+]});
 </script>

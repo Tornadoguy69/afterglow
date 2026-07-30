@@ -43,6 +43,7 @@
 
 <script type="module">
 import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture } from '../../engine/engine.js';
+import { tour } from '../../engine/tour.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    The three things people mean by "multiverse" are not variants of one idea.
@@ -428,4 +429,96 @@ app.onFrame(dt=>{
 });
 app.onThemeChange(update);   // repaint the plot when the theme flips
 update();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GUIDED TOUR
+   The badge on this page says speculative. The tour has to sound like it means it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const setIdea = k => { P.idea=k; update(); };
+const setT    = v => { P.t=v; sT.set(v); update(); };
+const setPlay = v => { P.play=v; playBtn.textContent = v?'❚❚  Pause':'▶  Run'; };
+
+tour(app, {beats:[
+{ say:'Before anything else. Every other page on this site shows you something that has '+
+      'been measured. This one has not. That is what the speculative badge means, '+
+      'and I am going to keep saying it.',
+  hold:15, cam:{pos:[0,52,168], target:[0,0,0], ms:1800},
+  run(){ setIdea('Eternal inflation'); setT(2.4); setPlay(true); } },
+
+{ say:'The other thing worth knowing up front is that multiverse is three completely '+
+      'different ideas wearing one word. They come from different physics, they claim '+
+      'different things, and people argue past each other constantly because of it.',
+  hold:18 },
+
+{ say:'The first one. Inflation is the enormous burst of expansion in the first instant '+
+      'of the universe, and it is well motivated — it fits the microwave background well. '+
+      'The awkward part is that in most versions, inflation never actually stops.',
+  hold:18 },
+
+{ say:'It keeps going almost everywhere, and bubbles of ordinary, non-inflating space '+
+      'appear inside it. Each bubble is a universe. Ours is one of them.',
+  hold:13, cam:{pos:[0,70,230], target:[0,0,0], ms:2800} },
+
+{ say:'Now watch the gap between them. The space in between is inflating faster than '+
+      'the bubbles grow into it, so two bubbles are moving apart faster than light '+
+      'can cross the distance. Nothing will ever get from one to the other.',
+  hold:18,
+  at:[{t:6.0, do(){ setPlay(false); setT(4.5); }}] },
+
+{ say:'That is not a technological problem. There is no signal, no particle and no '+
+      'observation that can ever pass between them. Which is precisely why this is hard '+
+      'to call science in the usual sense.',
+  hold:15 },
+
+{ say:'The second idea is completely unrelated, and it comes from quantum mechanics.',
+  hold:7,
+  at:[{t:4.0, do(){ setIdea('Many worlds'); }}] },
+
+{ say:'Quantum mechanics says an unmeasured particle is in several states at once, '+
+      'and measuring it gives you just one. Many worlds says the other outcomes '+
+      'do not disappear. Every measurement splits reality, and you go on down '+
+      'one branch without noticing.',
+  hold:19, cam:{pos:[0,44,150], target:[0,0,0], ms:2600} },
+
+{ say:'Here is the honest part. Many worlds makes exactly the same predictions as every '+
+      'other interpretation for every experiment ever done. That is not a criticism, '+
+      'it is the definition of an interpretation — but it means no experiment '+
+      'can currently tell them apart.',
+  hold:19 },
+
+{ say:'The third comes from string theory.',
+  hold:5,
+  at:[{t:2.8, do(){ setIdea('String landscape'); }}] },
+
+{ say:'Every valley in this landscape is a different stable configuration, and each one '+
+      'has its own physical constants. Different electron mass, different strength '+
+      'of gravity, different everything. The blue marker is ours.',
+  hold:16, cam:{pos:[0,90,200], target:[0,0,0], ms:3000} },
+
+{ say:'The usual estimate for the number of valleys is ten to the five hundred. '+
+      'That is not a big number, that is an absurd number — far more than the atoms '+
+      'in the observable universe, squared, several times over.',
+  hold:16 },
+
+{ say:'And that is the real objection, for all three. Look at the row that asks whether '+
+      'there is any way to test it.',
+  hold:10, cam:{pos:[0,52,168], target:[0,0,0], ms:2400} },
+
+{ say:'A theory that can accommodate any observation predicts nothing. '+
+      'The serious complaint about the multiverse is not that it is strange. '+
+      'It is that no measurement we could make would come out differently if it were false.',
+  hold:17 },
+
+{ say:'There is one genuine exception, and it is worth knowing. If our bubble collided '+
+      'with a neighbour early on, it would have left a circular cold or warm disc '+
+      'in the microwave background. People have looked. Nothing convincing has turned up — '+
+      'but that is a real, falsifiable test, and it is the only one on this page.',
+  hold:22,
+  run(){ setIdea('Eternal inflation'); setPlay(true); } },
+
+{ say:'So: three interesting ideas that fall out of theories that work well elsewhere, '+
+      'and no evidence for any of them. Untested is not the same as false, '+
+      'and it is not the same as true either.',
+  hold:15 }
+]});
 </script>

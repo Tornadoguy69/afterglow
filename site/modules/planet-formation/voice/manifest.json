@@ -1,0 +1,86 @@
+[
+ {
+  "i": 0,
+  "file": "voice/beat-01.mp3",
+  "dur": 9.22,
+  "text": "Every planet you have ever heard of started as dust. Grains a thousandth of a millimetre across, orbiting a new star in a flat disk like this one."
+ },
+ {
+  "i": 1,
+  "file": "voice/beat-02.mp3",
+  "dur": 6.14,
+  "text": "Getting from that to a planet means growing by about thirteen orders of magnitude. Let me run it."
+ },
+ {
+  "i": 2,
+  "file": "voice/beat-03.mp3",
+  "dur": 11.86,
+  "text": "Dust grains bump gently and stick together with static, the way dust bunnies form under a bed. They become pebbles. So far this is easy, and it has been reproduced in laboratories."
+ },
+ {
+  "i": 3,
+  "file": "voice/beat-04.mp3",
+  "dur": 8.02,
+  "text": "And then everything stops. This is the metre size barrier, and it is a genuine unsolved problem in astrophysics."
+ },
+ {
+  "i": 4,
+  "file": "voice/beat-05.mp3",
+  "dur": 16.87,
+  "text": "Two things go wrong at once. Boulders this size hit each other hard enough to shatter instead of stick. And look at the readout for how long they take to spiral into the star. It bottoms out right here. The gas in the disk drags on them, and they fall inward in a few hundred years."
+ },
+ {
+  "i": 5,
+  "file": "voice/beat-06.mp3",
+  "dur": 11.83,
+  "text": "A few hundred years. That is nothing. Every boulder in this disk should have been swallowed by the star long before it could grow into anything. And yet here we are, standing on the result."
+ },
+ {
+  "i": 6,
+  "file": "voice/beat-07.mp3",
+  "dur": 15.1,
+  "text": "The leading answer is the streaming instability — solids clumping together collectively and collapsing under their own gravity, skipping the dangerous sizes entirely. It works in simulations. It is not yet a settled account of every disk."
+ },
+ {
+  "i": 7,
+  "file": "voice/beat-08.mp3",
+  "dur": 7.87,
+  "text": "Past that barrier it gets easy again. Gravity takes over, and bigger bodies sweep up smaller ones faster and faster."
+ },
+ {
+  "i": 8,
+  "file": "voice/beat-09.mp3",
+  "dur": 4.08,
+  "text": "Planetesimals, then protoplanets, then planets."
+ },
+ {
+  "i": 9,
+  "file": "voice/beat-10.mp3",
+  "dur": 9.84,
+  "text": "Now the second big idea on this page. That pale blue circle is the snow line. Inside it, water is vapour. Outside it, water is ice."
+ },
+ {
+  "i": 10,
+  "file": "voice/beat-11.mp3",
+  "dur": 12.65,
+  "text": "Let me put you at one astronomical unit — where Earth is. Inside the line. Warm, and the only solid material available is rock and metal, which is scarce. So you build something small."
+ },
+ {
+  "i": 11,
+  "file": "voice/beat-12.mp3",
+  "dur": 4.13,
+  "text": "Now move out to five astronomical units, where Jupiter is."
+ },
+ {
+  "i": 12,
+  "file": "voice/beat-13.mp3",
+  "dur": 17.71,
+  "text": "Beyond the snow line water is solid, and water is abundant, so the amount of building material jumps by roughly four times. You grow a core fast enough to start pulling in gas directly, and once that starts it runs away. That is why the outer planets are giants and the inner ones are not."
+ },
+ {
+  "i": 13,
+  "file": "voice/beat-14.mp3",
+  "dur": 11.38,
+  "text": "One line in a disk of gas, drawn by nothing more than the temperature where water freezes, and it decided what kind of planet we live on. Drag the radius slider and watch what forms where."
+ }
+]
