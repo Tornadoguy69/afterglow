@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Afterglow mark. A boundary, and a glow escaping past it.
+       Quietly also the Bullet Cluster: the gravity peak sitting beside the matter peak.
+       Stroke is heavier than the wordmark version so it survives at 16px. -->
+  <circle cx="48.5" cy="50" r="30" fill="none" stroke="#C1613F" stroke-width="3.6"/>
+  <circle cx="71.5" cy="30.7" r="9.6" fill="#C1613F"/>
+</svg>
