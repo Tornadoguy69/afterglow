@@ -7,6 +7,22 @@
 <meta name="theme-color" content="#FAFAF7">
 <title>Afterglow — explore the universe for yourself</title>
 <link rel="icon" type="image/svg+xml" href="engine/logo.svg">
+<!-- Share card (Open Graph / Twitter). Absolute URL so crawlers resolve the image. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Afterglow">
+<meta property="og:url" content="https://afterglow-ecru.vercel.app/">
+<meta property="og:title" content="Afterglow — explore the universe for yourself">
+<meta property="og:description" content="Interactive astronomy where the equations actually run. Live simulations with honest confidence labels.">
+<meta property="og:image" content="https://afterglow-ecru.vercel.app/image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Afterglow — the universe makes more sense when it moves">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Afterglow — explore the universe for yourself">
+<meta name="twitter:description" content="Interactive astronomy where the equations actually run. Live simulations with honest confidence labels.">
+<meta name="twitter:image" content="https://afterglow-ecru.vercel.app/image.jpg">
+<meta name="twitter:image:alt" content="Afterglow — the universe makes more sense when it moves">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -46,12 +62,13 @@
   .brandmark svg{width:24px;height:24px;flex:none;overflow:visible}
   .brandmark .dot{transform-box:view-box;transform-origin:48.5px 50px}
   .brandmark .t1,.brandmark .t2{opacity:0;transition:opacity .25s var(--ease)}
+  /* Fallback if JS never runs; .orbit-js takes over so hover never restarts mid-arc */
   .brandmark:hover .dot{animation:orbit 2.9s linear infinite}
-  .brandmark:hover .lead{animation-delay:-.22s}
-  .brandmark:hover .t1{opacity:.34;animation-delay:-.11s}
-  .brandmark:hover .t2{opacity:.15;animation-delay:0s}
+  .brandmark:hover .t1{opacity:.34}
+  .brandmark:hover .t2{opacity:.15}
+  .brandmark.orbit-js .dot,.brandmark.orbit-js:hover .dot{animation:none}
   .brandmark .ring{transition:stroke-width .3s var(--ease)}
-  .brandmark:hover .ring{animation:breathe 2.9s ease-in-out infinite}
+  .brandmark:hover .ring{stroke-width:3.5}
   .brandmark .wordmark{
     font-family:var(--serif);font-size:17px;letter-spacing:.01em;color:var(--ink);
     transition:letter-spacing .35s var(--ease),color .2s var(--ease);
@@ -91,14 +108,15 @@
     transform:scale(1.03);
   }
   .hero-mark .dot{transform-box:view-box;transform-origin:48.5px 50px}
-  .hero-mark .t1,.hero-mark .t2{opacity:0;transition:opacity .3s var(--ease)}
+  .hero-mark .t1,.hero-mark .t2{transition:opacity .3s var(--ease)}
+  /* CSS fallback orbit (fixed speed). Hover used to change animation-duration,
+     which restarts the keyframes and makes the orb jump. JS (.orbit-js) owns
+     the angle and only changes angular speed on hover. */
   .hero-mark .dot{animation:orbit 7.5s linear infinite}
-  .hero-mark .lead{animation-delay:0s}
-  .hero-mark .t1{opacity:.28;animation-delay:-.18s}
-  .hero-mark .t2{opacity:.12;animation-delay:-.36s}
+  .hero-mark .t1{opacity:.28}
+  .hero-mark .t2{opacity:.12}
+  .hero-mark.orbit-js .dot{animation:none}
   .hero-mark .ring{animation:breathe 7.5s ease-in-out infinite}
-  .hero-mark:hover .dot{animation-duration:2.8s}
-  .hero-mark:hover .ring{animation-duration:2.8s}
   .hero-mark:hover .t1{opacity:.4}
   .hero-mark:hover .t2{opacity:.18}
   @keyframes orbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
@@ -578,12 +596,13 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    .brandmark:hover .dot,.brandmark:hover .ring,
+    .brandmark:hover .dot,
     .hero-mark .dot,.hero-mark .ring,
     .fig .spin,.fig .orbit-dot,.fig .wave,.fig .pulse,.fig .red-dot,
     .fig-dm .disk-spin,.fig-dm .orbit-star,.fig-bh .disk-back,.fig-bh .disk-front,.fig-bh .photon{animation:none!important}
     .brandmark:hover .t1,.brandmark:hover .t2,
     .hero-mark .t1,.hero-mark .t2{opacity:0}
+    .brandmark .dot,.hero-mark .dot{transform:none!important}
     .fig .draw,.fig-dm .observed,.fig-bh .ray{stroke-dashoffset:0}
     .fig-dm .gap{opacity:1}
     a.featured,a.card,.howto article,.fig .out,.fig .bubble,.fig .bang-ring,
@@ -1096,6 +1115,59 @@
   };
   paintChrome();
   document.addEventListener('themechange', paintChrome);
+
+  /* Continuous logo orbit: keep a running phase (0–1 turns) and only change
+     angular speed on hover. Changing CSS animation-duration restarts keyframes
+     and the orb jumps to a different place on the ring. */
+  function wireLogoOrbit(root, {idlePeriod=7.5, hoverPeriod=2.8, phases={lead:0,t1:0,t2:0}}={}){
+    if(!root || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const nodes = [...root.querySelectorAll('.dot')].map(el=>{
+      const kind = el.classList.contains('t2') ? 't2'
+                 : el.classList.contains('t1') ? 't1' : 'lead';
+      return {el, phase: phases[kind]||0};
+    });
+    if(!nodes.length) return;
+    root.classList.add('orbit-js');
+    let turn = 0;
+    let period = Number.isFinite(idlePeriod) ? idlePeriod : null; // null = parked
+    let last = performance.now();
+    let hot = false;
+    const setPeriod = ()=>{
+      period = hot ? hoverPeriod : (Number.isFinite(idlePeriod) ? idlePeriod : null);
+    };
+    const onHot = on=>{ hot=on; setPeriod(); };
+    root.addEventListener('pointerenter',()=>onHot(true));
+    root.addEventListener('pointerleave',()=>onHot(false));
+    root.addEventListener('focus',()=>onHot(true));
+    root.addEventListener('blur',()=>onHot(false));
+    const paint = ()=>{
+      for(const {el, phase} of nodes){
+        const deg = ((turn - phase) % 1 + 1) % 1 * 360;
+        el.style.transform = `rotate(${deg}deg)`;
+      }
+    };
+    paint();
+    (function tick(now){
+      const dt = Math.min(0.064, (now-last)/1000);
+      last = now;
+      if(period!=null && period>0){
+        turn = (turn + dt/period) % 1;
+        paint();
+      }
+      requestAnimationFrame(tick);
+    })(last);
+  }
+  /* Phase offsets match the old animation-delay ratios (delay / period). */
+  wireLogoOrbit(document.querySelector('.hero-mark'), {
+    idlePeriod: 7.5,
+    hoverPeriod: 2.8,
+    phases: {lead:0, t1:0.18/7.5, t2:0.36/7.5}
+  });
+  wireLogoOrbit(document.querySelector('.brandmark'), {
+    idlePeriod: Infinity,   // parked until hover
+    hoverPeriod: 2.9,
+    phases: {lead:0, t1:0.11/2.9, t2:0.22/2.9}
+  });
 
   /* Draw the dark-matter curve when the featured card enters view. */
   const feat = document.getElementById('featured-dm');

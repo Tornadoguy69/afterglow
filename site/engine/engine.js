@@ -301,21 +301,69 @@ export function boot(opts={}){
   const home = {pos:camera.position.clone(), tgt:controls.target.clone()};
 
   /* OrbitControls applies its dolly in a single frame and ignores deltaY magnitude,
-     which makes the wheel jump. Accumulate a target distance and ease to it. */
+     which makes the wheel jump. Accumulate a target distance and ease to it.
+     enableZoom is off so *all* distance changes go through ZOOM — including mobile
+     pinch below. Without the pinch path, phones only get rotate/pan. */
   const ZOOM = {target:null, tau:0.10, k:0.00085};
+  function setZoomDistance(next){
+    ZOOM.target=Math.min(dist[1],Math.max(dist[0],next));
+  }
+  function currentZoomDistance(){
+    return (ZOOM.target!=null)? ZOOM.target : camera.position.distanceTo(controls.target);
+  }
   canvas.addEventListener('wheel',e=>{
     e.preventDefault();
     let d=e.deltaY;
     if(e.deltaMode===1) d*=16; else if(e.deltaMode===2) d*=100;
     d=Math.max(-100,Math.min(100,d));
-    const cur=(ZOOM.target!=null)? ZOOM.target : camera.position.distanceTo(controls.target);
-    ZOOM.target=Math.min(dist[1],Math.max(dist[0],cur*Math.exp(d*ZOOM.k)));
+    setZoomDistance(currentZoomDistance()*Math.exp(d*ZOOM.k));
   },{passive:false});
+
+  /* Two-finger pinch → same smooth ZOOM path. Absolute scale from gesture start
+     so the distance tracks finger separation without drift. */
+  const pinchPtrs = new Map();
+  let pinchStart = null; // {sep, zoom}
+  function pinchSep(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+  function refreshPinch(){
+    if(pinchPtrs.size===2){
+      const [a,b]=pinchPtrs.values();
+      const sep=pinchSep(a,b);
+      if(sep>4) pinchStart={sep, zoom:currentZoomDistance()};
+      else pinchStart=null;
+    } else {
+      pinchStart=null;
+    }
+  }
+  canvas.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse') return;
+    pinchPtrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    refreshPinch();
+  });
+  canvas.addEventListener('pointermove',e=>{
+    if(!pinchPtrs.has(e.pointerId)) return;
+    pinchPtrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pinchPtrs.size!==2 || !pinchStart || pinchStart.sep<4) return;
+    const [a,b]=pinchPtrs.values();
+    const sep=pinchSep(a,b);
+    if(sep<4) return;
+    /* Fingers farther → closer to target (zoom in). Fingers closer → zoom out. */
+    setZoomDistance(pinchStart.zoom*(pinchStart.sep/sep));
+  });
+  const endPinchPtr=e=>{
+    if(!pinchPtrs.delete(e.pointerId)) return;
+    refreshPinch();
+  };
+  /* pointerup/cancel only — pointerleave fires mid-gesture for the second finger
+     (OrbitControls only captures the first pointer) and would kill the pinch. */
+  canvas.addEventListener('pointerup',endPinchPtr);
+  canvas.addEventListener('pointercancel',endPinchPtr);
+
   function applyZoom(dt){
     if(ZOOM.target==null) return;
     const off=camera.position.clone().sub(controls.target);
     const cur=off.length();
-    if(Math.abs(cur-ZOOM.target)<=cur*2e-4){ ZOOM.target=null; return; }
+    if(cur<1e-8){ ZOOM.target=null; return; }
+    if(Math.abs(cur-ZOOM.target)<=Math.max(cur*2e-4,1e-4)){ ZOOM.target=null; return; }
     const a=1-Math.exp(-dt/ZOOM.tau);
     camera.position.copy(controls.target).add(off.multiplyScalar((cur+(ZOOM.target-cur)*a)/cur));
   }
