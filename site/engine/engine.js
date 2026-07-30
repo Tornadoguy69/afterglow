@@ -11,6 +11,7 @@ import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
+import { ambience }        from './ambience.js';
 
 export { THREE };
 
@@ -543,6 +544,23 @@ function wireChrome(){
     };
     onThemeChange(paintTheme);
 
+    /* Ambient bed. Space is silent — there is no medium out there to carry a
+       pressure wave — so the title says plainly that this is atmosphere rather
+       than a recording, and it is one click to switch off. */
+    const amb = ambience();
+    const sound = iconButton({
+      icon: amb.on ? '♪' : '♪',
+      title: amb.on ? 'Ambience off  —  synthesised, not a recording'
+                    : 'Ambience on  —  synthesised, not a recording',
+      onClick: ()=>{
+        const now = amb.toggle();
+        sound.classList.toggle('muted', !now);
+        sound.set('♪', now ? 'Ambience off  —  synthesised, not a recording'
+                           : 'Ambience on  —  synthesised, not a recording');
+      }
+    });
+    if(!amb.on) sound.classList.add('muted');
+
     /* One control, two states. The button that hid the panel is the button that
        brings it back — no second control appearing elsewhere on screen. */
     /* » and « rather than ⇥/⇤ — the arrow-to-bar glyphs fall back inconsistently
@@ -555,7 +573,7 @@ function wireChrome(){
     };
     window.__paintPanel = paintPanel;          // so the P shortcut can keep it in sync
 
-    tools.append(repoLink(),theme,pan);
+    tools.append(repoLink(),sound,theme,pan);
     brand.appendChild(tools);
   }
   if(!document.querySelector('.skip')){

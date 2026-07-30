@@ -95,6 +95,14 @@ header{
   display:block;transition:transform .30s var(--ease),opacity .16s var(--ease);
 }
 .iconbtn .ico.swap{transform:rotate(-110deg) scale(.55);opacity:0}
+/* Ambience off: the glyph is struck through rather than swapped, so the button
+   keeps its shape and the state is readable at a glance. */
+.iconbtn.muted{color:var(--ink-4)}
+.iconbtn.muted .ico{position:relative}
+.iconbtn.muted .ico::after{
+  content:'';position:absolute;left:-3px;right:-3px;top:50%;height:1.5px;
+  background:currentColor;transform:rotate(-38deg);border-radius:1px;
+}
 /* a soft wash that blooms from the centre on press */
 .iconbtn::after{
   content:'';position:absolute;inset:0;border-radius:inherit;background:var(--clay);

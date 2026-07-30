@@ -200,6 +200,7 @@ export function tour(app, cfg){
     sayBox.innerHTML = b.say;
     paint();
 
+    window.__ambience?.duck(true);     // the bed sits under the narration
     if(b.cam) app.flyTo(b.cam.pos, b.cam.target, reduced() ? 0 : (b.cam.ms ?? 2000));
     if(b.run){ try{ b.run(); }catch(e){ console.warn(e); } }
 
@@ -228,6 +229,7 @@ export function tour(app, cfg){
     if(!T.on) return;
     T.on = false; T.token++;
     stopVoice();
+    window.__ambience?.duck(false);     // bed comes back up
     if(T.raf){ cancelAnimationFrame(T.raf); T.raf = null; }
     document.documentElement.classList.remove('touring');
     $('#app').classList.remove('tour');
