@@ -1,10 +1,19 @@
 # Afterglow — physics you can poke at
 
+### → **[afterglow-ecru.vercel.app](https://afterglow-ecru.vercel.app)**
+
 Interactive astronomy where the equations actually run in the browser. Ten topics, from
 stellar evolution to the multiverse, each one a working simulation rather than a
 pre-rendered animation dressed up as a model.
 
+*Afterglow* is what cosmologists call the cosmic microwave background: the light still
+arriving from the moment the universe turned transparent.
+
+## Run it locally
+
 ```bash
+git clone https://github.com/Tornadoguy69/afterglow
+cd afterglow
 node serve.mjs      # → http://localhost:8899
 ```
 
