@@ -1,12 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="How to add a new topic to Afterglow — one folder, real physics, honest confidence labels.">
 <title>Contribute — Afterglow</title>
 <link rel="icon" type="image/svg+xml" href="engine/logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="engine/style.css">
+<script>
+  try{
+    var t=localStorage.getItem('afterglow-theme');
+    if(!t) t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+    if(t==='dark') document.documentElement.setAttribute('data-theme','dark');
+  }catch(e){}
+</script>
 <style>
+  html,body{height:auto;min-height:100%;min-height:100dvh}
   body{overflow-y:auto}
   .wrap{max-width:1060px;margin:0 auto;padding:34px 28px 90px}
   .topbar{display:flex;align-items:center;gap:14px;margin-bottom:44px}
@@ -90,6 +102,8 @@
     .wrap{padding:14px 12px 56px}
   }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <div class="topbar">
@@ -357,3 +371,5 @@ function tally(){
 }
 tally();
 </script>
+</body>
+</html>

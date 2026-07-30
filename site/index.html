@@ -1,118 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Afterglow — physics you can poke at</title>
+<meta name="description" content="Afterglow — explore space science with live simulations you can touch. Every topic says how sure scientists really are.">
+<meta name="theme-color" content="#FAFAF7">
+<title>Afterglow — explore the universe for yourself</title>
 <link rel="icon" type="image/svg+xml" href="engine/logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="engine/style.css">
+<script>
+  try{
+    var t=localStorage.getItem('afterglow-theme');
+    if(!t) t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+    if(t==='dark') document.documentElement.setAttribute('data-theme','dark');
+  }catch(e){}
+</script>
 <style>
-  body{overflow-y:auto}
-  .wrap{max-width:1120px;margin:0 auto;padding:26px 28px 90px}
-  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:44px}
+  html,body{height:auto;min-height:100%;min-height:100dvh}
+  body{
+    overflow-y:auto;overflow-x:hidden;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -8%, color-mix(in srgb, var(--clay) 12%, transparent), transparent 58%),
+      var(--paper);
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px 100px}
+
+  /* ---------- sticky chrome ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:40;
+    display:flex;align-items:center;gap:14px;
+    margin:0 -28px;padding:12px 28px;
+    background:color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter:blur(14px) saturate(1.15);
+    -webkit-backdrop-filter:blur(14px) saturate(1.15);
+    border-bottom:1px solid transparent;
+    transition:border-color .2s var(--ease);
+  }
+  .topbar.scrolled{border-bottom-color:var(--line)}
   .brandmark{
     display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--clay);
   }
   .brandmark svg{width:24px;height:24px;flex:none;overflow:visible}
-
-  /* On hover the dot orbits the ring — which is what a body sitting on that
-     boundary would actually do. Two dimmer copies trail behind it on a phase
-     offset, so it reads as motion rather than a jumping dot. */
-  .brandmark .dot{
-    transform-box:view-box; transform-origin:48.5px 50px;
-  }
+  .brandmark .dot{transform-box:view-box;transform-origin:48.5px 50px}
   .brandmark .t1,.brandmark .t2{opacity:0;transition:opacity .25s var(--ease)}
   .brandmark:hover .dot{animation:orbit 2.9s linear infinite}
   .brandmark:hover .lead{animation-delay:-.22s}
   .brandmark:hover .t1{opacity:.34;animation-delay:-.11s}
   .brandmark:hover .t2{opacity:.15;animation-delay:0s}
-  @keyframes orbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-
-  /* the ring breathes very slightly, in time with the orbit */
   .brandmark .ring{transition:stroke-width .3s var(--ease)}
   .brandmark:hover .ring{animation:breathe 2.9s ease-in-out infinite}
-  @keyframes breathe{0%,100%{stroke-width:2.8}50%{stroke-width:3.7}}
-
-  .brandmark .wordmark{transition:letter-spacing .35s var(--ease),color .2s var(--ease)}
-  .brandmark:hover .wordmark{letter-spacing:.035em}
-
-  /* a spinning logo is exactly the kind of thing to switch off when asked */
-  @media (prefers-reduced-motion: reduce){
-    .brandmark:hover .dot,.brandmark:hover .ring{animation:none}
-    .brandmark:hover .t1,.brandmark:hover .t2{opacity:0}
+  .brandmark .wordmark{
+    font-family:var(--serif);font-size:17px;letter-spacing:.01em;color:var(--ink);
+    transition:letter-spacing .35s var(--ease),color .2s var(--ease);
   }
-  .wordmark{font-family:var(--serif);font-size:18px;letter-spacing:.01em;color:var(--ink)}
+  .brandmark:hover .wordmark{letter-spacing:.035em;color:var(--clay)}
   .topbar .tools{margin-left:auto;display:flex;gap:8px;align-items:center}
-  .topbar .back{
-    font-family:var(--sans);font-size:12px;color:var(--ink-3);text-decoration:none;
-    border:1px solid var(--line-2);border-radius:7px;padding:7px 12px;transition:.14s var(--ease);
+  .topbar .navlink{
+    font-family:var(--sans);font-size:12.5px;font-weight:500;color:var(--ink-3);
+    text-decoration:none;border:1px solid var(--line-2);border-radius:8px;
+    padding:7px 13px;transition:background .14s var(--ease),color .14s var(--ease),border-color .14s var(--ease);
   }
-  .topbar .back:hover{background:var(--paper-3);color:var(--ink);border-color:var(--ink-4)}
-  .hero h1{
-    font-family:var(--serif);font-size:clamp(34px,5vw,58px);font-weight:400;
-    letter-spacing:-.022em;line-height:1.08;margin:0 0 18px;max-width:17ch;
-  }
-  .hero p{
-    font-family:var(--serif);font-size:17px;line-height:1.62;color:var(--ink-2);
-    max-width:62ch;margin:0 0 14px;
-  }
-  .hero .meta{font-family:var(--mono);font-size:11px;color:var(--ink-4);margin-top:22px}
-  .rule{height:1px;background:var(--line);margin:44px 0 30px}
-  h2.sec-title{
-    font-family:var(--sans);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--ink-4);font-weight:600;margin:0 0 6px;
-  }
-  .sec-lede{font-family:var(--serif);font-size:14px;color:var(--ink-3);margin:0 0 22px;max-width:64ch}
-  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
-  .card{
-    display:flex;flex-direction:column;gap:9px;padding:19px 20px 17px;
-    border:1px solid var(--line-2);border-radius:12px;background:var(--paper-2);
-    text-decoration:none;color:inherit;transition:border-color .16s,background .16s,transform .16s;
-  }
-  a.card:hover{border-color:var(--ink-4);background:var(--paper-3);transform:translateY(-2px)}
-  .card h3{font-family:var(--serif);font-size:20px;font-weight:400;margin:0;letter-spacing:-.01em}
-  .card p{font-family:var(--serif);font-size:13.5px;line-height:1.55;color:var(--ink-2);margin:0}
-  .card .foot{
-    display:flex;align-items:center;gap:9px;margin-top:auto;padding-top:8px;flex-wrap:wrap;
-    font-family:var(--mono);font-size:10px;color:var(--ink-4);
-  }
-  .card.soon{opacity:.62;background:transparent;border-style:dashed}
-  .card.soon h3{color:var(--ink-2)}
-  .go{margin-left:auto;color:var(--clay);font-family:var(--sans);font-size:12px;font-weight:500}
-  .tiers{display:flex;gap:22px;flex-wrap:wrap;margin:0 0 30px}
-  .tiers div{max-width:30ch}
-  .tiers .tier{margin-bottom:7px}
-  .tiers p{font-family:var(--serif);font-size:13px;color:var(--ink-3);line-height:1.55;margin:0}
-  footer{
-    margin-top:56px;padding-top:24px;border-top:1px solid var(--line);
-    font-family:var(--mono);font-size:11px;color:var(--ink-4);line-height:1.8;
-  }
-  footer a{color:var(--ink-3)}
+  .topbar .navlink:hover{background:var(--paper-3);color:var(--ink);border-color:var(--ink-4)}
+  .topbar .navlink.pri{background:var(--clay);color:#FCFBF8;border-color:var(--clay)}
+  .topbar .navlink.pri:hover{background:var(--clay-2);border-color:var(--clay-2);color:#fff}
 
-  @media (max-width:720px){
-    .wrap{padding:18px 16px 72px}
-    .topbar{margin-bottom:28px;flex-wrap:wrap;gap:10px}
-    .topbar .tools{margin-left:auto}
-    .hero h1{font-size:clamp(28px,8.2vw,40px);margin-bottom:14px}
-    .hero p{font-size:15.5px;line-height:1.55}
-    .rule{margin:32px 0 22px}
-    .grid{grid-template-columns:1fr;gap:12px}
-    .card{padding:16px 16px 14px}
-    .card h3{font-size:18px}
-    .tiers{gap:16px;flex-direction:column}
-    .tiers div{max-width:none}
-    footer{margin-top:40px;font-size:10.5px}
+  /* ---------- hero ---------- */
+  .hero{
+    padding:52px 0 8px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:40px 52px;
+    align-items:center;
+  }
+  .hero-mark{
+    display:flex;flex-direction:column;align-items:center;gap:14px;
+    text-decoration:none;color:var(--clay);justify-self:end;
+    order:2;
+  }
+  .hero-mark svg{
+    width:clamp(108px,16vw,156px);height:clamp(108px,16vw,156px);
+    overflow:visible;display:block;
+    filter:drop-shadow(0 10px 24px color-mix(in srgb, var(--clay) 20%, transparent));
+    transition:filter .35s var(--ease),transform .4s var(--ease);
+  }
+  .hero-mark:hover svg{
+    filter:drop-shadow(0 14px 32px color-mix(in srgb, var(--clay) 30%, transparent));
+    transform:scale(1.03);
+  }
+  .hero-mark .dot{transform-box:view-box;transform-origin:48.5px 50px}
+  .hero-mark .t1,.hero-mark .t2{opacity:0;transition:opacity .3s var(--ease)}
+  .hero-mark .dot{animation:orbit 7.5s linear infinite}
+  .hero-mark .lead{animation-delay:0s}
+  .hero-mark .t1{opacity:.28;animation-delay:-.18s}
+  .hero-mark .t2{opacity:.12;animation-delay:-.36s}
+  .hero-mark .ring{animation:breathe 7.5s ease-in-out infinite}
+  .hero-mark:hover .dot{animation-duration:2.8s}
+  .hero-mark:hover .ring{animation-duration:2.8s}
+  .hero-mark:hover .t1{opacity:.4}
+  .hero-mark:hover .t2{opacity:.18}
+  @keyframes orbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  @keyframes breathe{0%,100%{stroke-width:2.8}50%{stroke-width:3.9}}
+  .hero-mark .name{
+    font-family:var(--serif);font-size:clamp(22px,2.5vw,28px);letter-spacing:.02em;
+    color:var(--ink);transition:letter-spacing .35s var(--ease),color .2s var(--ease);
+  }
+  .hero-mark:hover .name{letter-spacing:.05em;color:var(--clay)}
+  .hero-mark .name-sub{
+    font-family:var(--sans);font-size:11px;letter-spacing:.04em;
+    color:var(--ink-4);margin-top:-6px;
+  }
+
+  .hero-copy{min-width:0;order:1}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--sans);font-size:12px;font-weight:500;
+    color:var(--clay);margin:0 0 14px;
+  }
+  .eyebrow::before{content:'';width:16px;height:1.5px;background:var(--clay);border-radius:2px}
+  .hero h1{
+    font-family:var(--serif);font-size:clamp(32px,4.6vw,50px);font-weight:400;
+    letter-spacing:-.024em;line-height:1.08;margin:0 0 16px;color:var(--ink);
+    max-width:16ch;
+  }
+  .hero h1 em{font-style:italic;font-weight:400;color:var(--ink-2)}
+  .hero .lede{
+    font-family:var(--serif);font-size:clamp(16px,1.55vw,18px);line-height:1.6;
+    color:var(--ink-2);max-width:40ch;margin:0 0 12px;
+  }
+  .hero .lede-sub{
+    font-family:var(--serif);font-size:15px;line-height:1.55;color:var(--ink-3);
+    max-width:42ch;margin:0 0 26px;
+  }
+  .hero-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .btn-cta{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--sans);font-size:13.5px;font-weight:500;line-height:1;
+    text-decoration:none;border-radius:9px;padding:12px 18px;
+    transition:transform .18s var(--ease),box-shadow .18s var(--ease),
+                background .14s var(--ease),border-color .14s var(--ease),color .14s var(--ease);
+  }
+  .btn-cta.primary{
+    background:var(--clay);color:#FCFBF8;border:1px solid var(--clay);
+    box-shadow:0 6px 18px color-mix(in srgb, var(--clay) 26%, transparent);
+  }
+  .btn-cta.primary:hover{
+    background:var(--clay-2);border-color:var(--clay-2);color:#fff;
+    transform:translateY(-2px);
+    box-shadow:0 12px 26px color-mix(in srgb, var(--clay) 34%, transparent);
+  }
+  .btn-cta.ghost{background:var(--paper);color:var(--ink-2);border:1px solid var(--line-2)}
+  .btn-cta.ghost:hover{background:var(--paper-3);color:var(--ink);border-color:var(--ink-4);transform:translateY(-2px)}
+  .btn-cta:active{transform:translateY(0) scale(.98)}
+  .btn-cta .arr{display:inline-block;transition:transform .18s var(--ease)}
+  .btn-cta:hover .arr{transform:translateX(3px)}
+
+  /* How to use */
+  .howto{
+    margin-top:44px;
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  }
+  .howto article{
+    background:var(--paper-2);border:1px solid var(--line-2);border-radius:14px;
+    padding:18px 18px 16px;
+    transition:border-color .2s var(--ease),transform .22s var(--ease),box-shadow .22s var(--ease);
+  }
+  .howto article:hover{
+    border-color:var(--ink-4);transform:translateY(-2px);
+    box-shadow:0 10px 24px rgba(0,0,0,.05);
+  }
+  .howto .step{
+    font-family:var(--sans);font-size:12px;font-weight:600;color:var(--clay);
+    margin:0 0 8px;
+  }
+  .howto h2{
+    font-family:var(--serif);font-size:18px;font-weight:400;margin:0 0 6px;letter-spacing:-.01em;
+  }
+  .howto p{
+    font-family:var(--serif);font-size:14px;line-height:1.55;color:var(--ink-3);margin:0;
+  }
+
+  /* Badge key */
+  .badge-key{
+    margin-top:28px;padding:18px 20px;
+    background:var(--paper-2);border:1px solid var(--line-2);border-radius:14px;
+  }
+  .badge-key > p{
+    font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink-3);
+    margin:0 0 14px;
+  }
+  .badge-key ul{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:16px 20px;
+    margin:0;padding:0;list-style:none;
+  }
+  .badge-key li{display:flex;flex-direction:column;gap:7px;align-items:flex-start}
+  .badge-key li p{
+    font-family:var(--serif);font-size:13.5px;line-height:1.5;color:var(--ink-2);margin:0;
+  }
+
+  /* Sections */
+  .section{margin-top:56px}
+  .section-head{
+    margin:0 0 18px;padding-bottom:14px;border-bottom:1px solid var(--line);
+  }
+  h2.sec-title{
+    font-family:var(--serif);font-size:clamp(22px,2.4vw,28px);font-weight:400;
+    letter-spacing:-.018em;color:var(--ink);margin:0 0 6px;line-height:1.2;
+  }
+  .sec-lede{
+    font-family:var(--serif);font-size:16px;color:var(--ink-3);margin:0;max-width:52ch;line-height:1.5;
+  }
+
+  /* ── Cards & featured: refined SVG diagrams (paper palette, not dark vignettes) ── */
+  .grid{
+    display:grid;gap:12px;
+    grid-template-columns:repeat(3,1fr);
+    margin-top:14px;
+  }
+  .grid.cols-2{grid-template-columns:repeat(2,1fr)}
+  .grid.cols-1{grid-template-columns:1fr;max-width:560px}
+
+  .featured{
+    display:grid;grid-template-columns:1fr minmax(200px,280px);gap:8px 28px;
+    align-items:center;
+    border:1px solid var(--line-2);border-radius:16px;
+    background:var(--paper-2);text-decoration:none;color:inherit;
+    padding:26px 28px 22px;
+    position:relative;overflow:hidden;
+    transition:border-color .25s var(--ease),transform .28s cubic-bezier(.2,.8,.2,1),
+                box-shadow .28s cubic-bezier(.2,.8,.2,1),background .25s var(--ease);
+  }
+  .featured::before{
+    content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--clay);
+    transition:width .22s var(--ease);
+  }
+  a.featured:hover{
+    border-color:color-mix(in srgb, var(--clay) 40%, var(--line-2));
+    background:var(--paper-3);
+    transform:translateY(-3px);
+    box-shadow:0 16px 40px rgba(0,0,0,.08);
+  }
+  a.featured:hover::before{width:5px}
+  .featured-copy{min-width:0}
+  .featured .kicker{
+    font-family:var(--sans);font-size:12px;font-weight:600;color:var(--clay);
+    margin:0 0 10px;
+  }
+  .featured h3{
+    font-family:var(--serif);font-size:clamp(26px,3vw,34px);font-weight:400;
+    letter-spacing:-.02em;margin:0 0 10px;line-height:1.12;
+  }
+  .featured p{
+    font-family:var(--serif);font-size:16px;line-height:1.58;color:var(--ink-2);
+    margin:0;max-width:48ch;
+  }
+  .featured .foot{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin-top:18px;padding-top:14px;border-top:1px solid var(--line);
+    font-family:var(--sans);font-size:12px;color:var(--ink-4);
+  }
+  .featured .go{
+    margin-left:auto;color:var(--clay);font-weight:500;font-size:13px;
+    transition:transform .2s var(--ease),color .15s var(--ease);
+  }
+  a.featured:hover .go{color:var(--clay-2);transform:translateX(4px)}
+
+  .card{
+    display:flex;flex-direction:column;gap:0;
+    padding:0;
+    border:1px solid var(--line-2);border-radius:14px;
+    background:var(--paper-2);text-decoration:none;color:inherit;
+    position:relative;overflow:hidden;
+    transition:border-color .25s var(--ease),background .25s var(--ease),
+                transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s cubic-bezier(.2,.8,.2,1);
+  }
+  .card::before{
+    content:'';position:absolute;left:0;top:0;bottom:0;width:3px;z-index:2;
+    background:var(--card-accent, var(--line-2));
+    transition:width .2s var(--ease);
+  }
+  .card[data-tier="established"]{--card-accent:var(--sage)}
+  .card[data-tier="active"]{--card-accent:var(--kraft)}
+  .card[data-tier="speculative"]{--card-accent:var(--plum)}
+  a.card:hover{
+    border-color:color-mix(in srgb, var(--card-accent) 35%, var(--line-2));
+    background:var(--paper-3);
+    transform:translateY(-3px);
+    box-shadow:0 14px 32px rgba(0,0,0,.07);
+  }
+  a.card:hover::before{width:4px}
+  a.card:active{transform:translateY(-1px) scale(.995)}
+
+  .card-body{display:flex;flex-direction:column;gap:8px;padding:14px 18px 16px;flex:1}
+  .card .num{
+    font-family:var(--sans);font-size:11px;font-weight:500;color:var(--ink-4);
+    letter-spacing:.04em;
+  }
+  .card h3{
+    font-family:var(--serif);font-size:20px;font-weight:400;margin:0;
+    letter-spacing:-.014em;line-height:1.2;
+  }
+  .card p{
+    font-family:var(--serif);font-size:14px;line-height:1.55;color:var(--ink-2);
+    margin:0;flex:1;
+  }
+  .card .foot{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    margin-top:4px;padding-top:12px;border-top:1px solid var(--line);
+    font-family:var(--sans);font-size:11px;color:var(--ink-4);
+  }
+  .go{
+    margin-left:auto;color:var(--clay);font-weight:500;font-size:12px;
+    transition:transform .2s var(--ease),color .15s var(--ease);
+  }
+  a.card:hover .go,a.featured:hover .go{color:var(--clay-2);transform:translateX(4px)}
+
+  /* Diagram stage */
+  .fig{
+    display:flex;align-items:center;justify-content:center;
+    padding:16px 16px 4px;
+    color:var(--ink-3);
+  }
+  .card .fig{
+    height:112px;padding:18px 16px 0;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+    transition:background .25s var(--ease);
+  }
+  a.card:hover .fig{background:linear-gradient(180deg, var(--paper) 0%, var(--paper-3) 100%)}
+  .featured .fig{padding:8px 0;color:var(--ink-3)}
+  .fig svg{width:100%;height:100%;max-height:100px;overflow:visible}
+  .featured .fig svg{max-height:160px}
+  .fig .stroke{fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+  .fig .stroke-soft{fill:none;stroke:currentColor;stroke-width:1.1;opacity:.45;stroke-linecap:round}
+  .fig .fill-soft{fill:currentColor;opacity:.1}
+  .fig .accent{stroke:var(--clay);fill:none;stroke-width:1.6;stroke-linecap:round}
+  .fig .accent-fill{fill:var(--clay)}
+  .fig .ink{fill:var(--ink);opacity:.85}
+
+  /* Idle = quiet; hover = motion (per topic) */
+  .fig .spin{transform-origin:center;transform-box:fill-box;animation:fig-spin 18s linear infinite paused}
+  a.card:hover .fig .spin,a.featured:hover .fig .spin{animation-play-state:running}
+  .fig .spin-fast{animation-duration:7s}
+  @keyframes fig-spin{to{transform:rotate(360deg)}}
+
+  .fig .pulse{transform-origin:center;transform-box:fill-box;transition:transform .45s var(--ease),opacity .45s var(--ease)}
+  a.card:hover .fig .pulse,a.featured:hover .fig .pulse{animation:fig-pulse 1.6s ease-in-out infinite}
+  @keyframes fig-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
+
+  .fig .draw{
+    stroke-dasharray:120;stroke-dashoffset:120;
+    transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1);
+  }
+  a.card:hover .fig .draw,a.featured:hover .fig .draw{stroke-dashoffset:0}
+
+  .fig .fade{opacity:.35;transition:opacity .35s var(--ease)}
+  a.card:hover .fig .fade,a.featured:hover .fig .fade{opacity:1}
+
+  .fig .orbit-dot{transform-origin:60px 40px;animation:fig-orbit 8s linear infinite paused}
+  a.card:hover .fig .orbit-dot{animation-play-state:running}
+  @keyframes fig-orbit{to{transform:rotate(360deg)}}
+
+  .fig .out{transition:transform .55s cubic-bezier(.2,.8,.2,1)}
+  a.card:hover .fig .g1{transform:translate(-6px,-5px)}
+  a.card:hover .fig .g2{transform:translate(7px,-4px)}
+  a.card:hover .fig .g3{transform:translate(-7px,5px)}
+  a.card:hover .fig .g4{transform:translate(6px,6px)}
+  a.card:hover .fig .g5{transform:translate(0,-7px)}
+
+  .fig .wave{opacity:0;transform-origin:center;transform-box:fill-box}
+  a.card:hover .fig .wave{animation:fig-wave 1.8s ease-out infinite}
+  a.card:hover .fig .wave.w2{animation-delay:.35s}
+  a.card:hover .fig .wave.w3{animation-delay:.7s}
+  @keyframes fig-wave{
+    0%{opacity:.55;transform:scale(.35)}
+    100%{opacity:0;transform:scale(1.65)}
+  }
+
+  .fig .bang-ring{transform-origin:center;transform-box:fill-box;opacity:.4;transition:transform .55s var(--ease),opacity .4s var(--ease)}
+  a.card:hover .fig .bang-ring{transform:scale(1.55);opacity:.75}
+  a.card:hover .fig .bang-ring.r2{transform:scale(2.1);transition-delay:.06s}
+  a.card:hover .fig .bang-core{transform:scale(1.15)}
+  .fig .bang-core{transform-origin:center;transform-box:fill-box;transition:transform .45s var(--ease)}
+
+  .fig .red-dot{transform-origin:center;transform-box:fill-box;transition:transform .35s var(--ease)}
+  a.card:hover .fig .red-dot{animation:fig-twinkle 1.4s ease-in-out infinite}
+  a.card:hover .fig .red-dot:nth-child(2){animation-delay:.15s}
+  a.card:hover .fig .red-dot:nth-child(3){animation-delay:.3s}
+  a.card:hover .fig .red-dot:nth-child(4){animation-delay:.45s}
+  @keyframes fig-twinkle{0%,100%{transform:scale(1)}50%{transform:scale(1.45)}}
+
+  .fig .bubble{transform-origin:center;transform-box:fill-box;transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .35s var(--ease)}
+  a.card:hover .fig .b1{transform:translate(-3px,-2px) scale(1.04)}
+  a.card:hover .fig .b2{transform:translate(4px,-1px) scale(1.06)}
+  a.card:hover .fig .b3{transform:translate(1px,3px) scale(1.05)}
+
+  /* ── Dark Matter: spiral + halo + rotation curve ── */
+  .fig-dm{color:var(--ink-3)}
+  .fig-dm .halo{
+    fill:url(#dmHalo);opacity:.55;
+    transform-origin:52px 70px;
+    transition:opacity .45s var(--ease),transform .55s cubic-bezier(.2,.8,.2,1);
+  }
+  a.featured:hover .fig-dm .halo{opacity:.9;transform:scale(1.08)}
+  .fig-dm .halo-edge{
+    fill:none;stroke:var(--blue);stroke-width:1.2;opacity:.35;
+    transition:opacity .4s var(--ease),stroke-width .4s var(--ease);
+  }
+  a.featured:hover .fig-dm .halo-edge{opacity:.75;stroke-width:1.6}
+  /* Outer group is centered at the bulge; CSS only rotates this group */
+  .fig-dm .disk-spin{
+    transform-origin:52px 70px;
+    animation:fig-spin 28s linear infinite;
+  }
+  a.featured:hover .fig-dm .disk-spin{animation-duration:10s}
+  .fig-dm .arm{
+    fill:none;stroke:var(--kraft);stroke-width:1.6;stroke-linecap:round;opacity:.75;
+  }
+  .fig-dm .arm.soft{stroke:var(--ink-3);stroke-width:1.2;opacity:.4}
+  .fig-dm .bulge{fill:url(#dmBulge)}
+  .fig-dm .star{fill:var(--ink);opacity:.7}
+  .fig-dm .orbit-star{
+    transform-origin:52px 70px;
+    animation:fig-spin 14s linear infinite;
+  }
+  a.featured:hover .fig-dm .orbit-star{animation-duration:5.5s}
+  .fig-dm .axis{stroke:var(--ink-4);stroke-width:1;opacity:.45;fill:none}
+  .fig-dm .gridline{stroke:var(--line-2);stroke-width:1;opacity:.8;fill:none}
+  .fig-dm .kepler{
+    fill:none;stroke:var(--ink-4);stroke-width:1.4;stroke-dasharray:3.5 3;
+    stroke-linecap:round;opacity:.55;
+  }
+  .fig-dm .observed{
+    fill:none;stroke:var(--clay);stroke-width:2.1;stroke-linecap:round;
+    stroke-dasharray:90;stroke-dashoffset:90;
+    transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1);
+  }
+  a.featured:hover .fig-dm .observed,
+  .featured.is-inview .fig-dm .observed{stroke-dashoffset:0}
+  .fig-dm .gap{
+    fill:color-mix(in srgb, var(--clay) 12%, transparent);
+    opacity:0;transition:opacity .5s .2s var(--ease);
+  }
+  a.featured:hover .fig-dm .gap,.featured.is-inview .fig-dm .gap{opacity:1}
+  .fig-dm .lab{
+    font-family:var(--sans);font-size:7.5px;fill:var(--ink-4);
+  }
+  .fig-dm .lab-clay{fill:var(--clay);font-weight:600}
+
+  /* ── Black hole: shadow, photon ring, warped disk, bent ray ── */
+  .fig-bh .disk-back{
+    fill:url(#bhDisk);opacity:.9;
+    transform-origin:60px 38px;transform-box:fill-box;
+    animation:fig-spin 16s linear infinite paused;
+  }
+  a.card:hover .fig-bh .disk-back{animation-play-state:running}
+  .fig-bh .disk-front{
+    fill:url(#bhDiskHot);opacity:.95;
+    transform-origin:60px 38px;transform-box:fill-box;
+    animation:fig-spin 16s linear infinite paused;
+  }
+  a.card:hover .fig-bh .disk-front{animation-play-state:running;animation-duration:7s}
+  .fig-bh .photon{
+    fill:none;stroke:url(#bhRing);stroke-width:2.4;
+    filter:drop-shadow(0 0 3px color-mix(in srgb, var(--clay) 50%, transparent));
+    transform-origin:60px 36px;transform-box:fill-box;
+    transition:transform .4s var(--ease),stroke-width .4s var(--ease);
+  }
+  a.card:hover .fig-bh .photon{
+    transform:scale(1.05);
+    stroke-width:2.8;
+    animation:bh-glow 1.8s ease-in-out infinite;
+  }
+  @keyframes bh-glow{
+    0%,100%{opacity:1}50%{opacity:.72}
+  }
+  .fig-bh .shadow{
+    fill:var(--ink);
+    filter:drop-shadow(0 0 6px rgba(0,0,0,.35));
+  }
+  .fig-bh .ray{
+    fill:none;stroke:var(--kraft);stroke-width:1.3;stroke-linecap:round;
+    opacity:0;stroke-dasharray:60;stroke-dashoffset:60;
+    transition:opacity .25s var(--ease),stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1);
+  }
+  a.card:hover .fig-bh .ray{opacity:.85;stroke-dashoffset:0}
+  .fig-bh .ray-dim{
+    fill:none;stroke:var(--ink-4);stroke-width:1;stroke-linecap:round;opacity:.3;
+  }
+
+  /* ── Nebula: one cloud, star turns on, ionization front grows ── */
+  .fig-neb .cloud-cold{
+    fill:var(--paper-3);stroke:var(--line-2);stroke-width:1.3;
+    transition:opacity .45s var(--ease);
+  }
+  .fig-neb .cloud-hot{
+    fill:url(#nebWash);stroke:color-mix(in srgb, var(--clay) 40%, var(--line-2));stroke-width:1.3;
+    opacity:0;transition:opacity .5s var(--ease);
+  }
+  a.card:hover .fig-neb .cloud-cold{opacity:.25}
+  a.card:hover .fig-neb .cloud-hot{opacity:1}
+
+  .fig-neb .front{
+    fill:none;stroke:var(--clay);stroke-width:1.5;stroke-dasharray:4 3;
+    opacity:.35;
+    transform-origin:36px 34px;
+    transition:transform .55s cubic-bezier(.2,.8,.2,1),opacity .4s var(--ease),stroke-dasharray .4s var(--ease);
+  }
+  a.card:hover .fig-neb .front{
+    transform:scale(1.55);opacity:.85;stroke-dasharray:0;
+  }
+
+  .fig-neb .front-fill{
+    fill:url(#nebSphereSoft);opacity:0;
+    transform-origin:36px 34px;
+    transition:transform .55s cubic-bezier(.2,.8,.2,1),opacity .45s var(--ease);
+  }
+  a.card:hover .fig-neb .front-fill{opacity:1;transform:scale(1.55)}
+
+  .fig-neb .star{
+    fill:var(--ink-4);
+    transform-origin:36px 34px;transform-box:fill-box;
+    transition:fill .35s var(--ease),transform .4s var(--ease);
+  }
+  a.card:hover .fig-neb .star{
+    fill:var(--clay);
+    transform:scale(1.25);
+    filter:drop-shadow(0 0 4px color-mix(in srgb, var(--clay) 45%, transparent));
+  }
+
+  .fig-neb .ray{
+    stroke:var(--clay);stroke-width:1.1;stroke-linecap:round;
+    opacity:0;transition:opacity .35s var(--ease);
+  }
+  a.card:hover .fig-neb .ray{opacity:.4}
+
+  .fig-neb .note{
+    font-family:var(--sans);font-size:7.5px;fill:var(--ink-4);
+    opacity:.75;transition:opacity .3s var(--ease);
+  }
+  a.card:hover .fig-neb .note{opacity:0}
+  .fig-neb .note-hi{
+    font-family:var(--sans);font-size:7.5px;fill:var(--clay);
+    opacity:0;transition:opacity .35s .08s var(--ease);
+  }
+  a.card:hover .fig-neb .note-hi{opacity:1}
+
+  /* Footer */
+  footer.site-foot{
+    margin-top:72px;padding-top:28px;border-top:1px solid var(--line);
+    display:grid;grid-template-columns:1.4fr 1fr;gap:28px 40px;
+  }
+  .foot-brand{
+    font-family:var(--serif);font-size:15px;line-height:1.55;color:var(--ink-2);
+    margin:0 0 10px;max-width:46ch;
+  }
+  .foot-brand em{color:var(--ink);font-style:italic}
+  .foot-meta{
+    font-family:var(--serif);font-size:14px;color:var(--ink-3);line-height:1.6;
+    margin:0;max-width:46ch;
+  }
+  .foot-links{
+    display:flex;flex-direction:column;gap:8px;align-items:flex-start;
+    font-family:var(--sans);font-size:13px;
+  }
+  .foot-links a{
+    color:var(--ink-2);text-decoration:none;
+    transition:color .14s var(--ease),transform .18s var(--ease);
+  }
+  .foot-links a:hover{color:var(--clay);transform:translateX(2px)}
+  .foot-links .hint{margin-top:8px;font-size:12px;color:var(--ink-4)}
+  .foot-links code{
+    font-family:var(--mono);font-size:10.5px;background:var(--paper-3);
+    border:1px solid var(--line-2);border-radius:4px;padding:1px 5px;color:var(--ink-3);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .brandmark:hover .dot,.brandmark:hover .ring,
+    .hero-mark .dot,.hero-mark .ring,
+    .fig .spin,.fig .orbit-dot,.fig .wave,.fig .pulse,.fig .red-dot,
+    .fig-dm .disk-spin,.fig-dm .orbit-star,.fig-bh .disk-back,.fig-bh .disk-front,.fig-bh .photon{animation:none!important}
+    .brandmark:hover .t1,.brandmark:hover .t2,
+    .hero-mark .t1,.hero-mark .t2{opacity:0}
+    .fig .draw,.fig-dm .observed,.fig-bh .ray{stroke-dashoffset:0}
+    .fig-dm .gap{opacity:1}
+    a.featured,a.card,.howto article,.fig .out,.fig .bubble,.fig .bang-ring,
+    .fig-dm .halo,.fig-neb .front,.fig-neb .front-fill,.fig-neb .star,
+    .fig-neb .cloud-cold,.fig-neb .cloud-hot{transition-duration:.01ms}
+  }
+
+  @media (max-width:900px){
+    .hero{
+      grid-template-columns:1fr;gap:28px;padding-top:32px;
+      text-align:center;justify-items:center;
+    }
+    .hero-mark,.hero-copy{order:unset;justify-self:center}
+    .hero-mark{order:-1}
+    .hero-copy{display:flex;flex-direction:column;align-items:center}
+    .hero h1{max-width:18ch}
+    .hero .lede,.hero .lede-sub{max-width:42ch}
+    .hero-actions{justify-content:center}
+    .eyebrow{justify-content:center}
+    .eyebrow::before{display:none}
+    .howto{grid-template-columns:1fr}
+    .badge-key ul{grid-template-columns:1fr}
+    .featured{grid-template-columns:1fr;padding:22px 20px 18px}
+    .featured .fig{order:-1;max-width:280px;margin:0 auto}
+    .grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:640px){
+    .wrap{padding:0 16px 80px}
+    .topbar{margin:0 -16px;padding:12px 16px}
+    .topbar .navlink.pri span{display:none}
+    .hero{padding-top:24px}
+    .hero h1{font-size:clamp(28px,8vw,36px)}
+    .section{margin-top:42px}
+    .grid,.grid.cols-2,.grid.cols-1{grid-template-columns:1fr;max-width:none}
+    .card-body{padding:14px 16px 14px}
+    footer.site-foot{grid-template-columns:1fr;margin-top:52px;gap:22px}
   }
   @media (max-width:400px){
-    .wrap{padding:14px 12px 56px}
-    .topbar .back{padding:6px 10px;font-size:11.5px}
+    .wrap{padding:0 12px 64px}
+    .topbar{margin:0 -12px;padding:10px 12px}
+    .btn-cta{width:100%;justify-content:center}
+    .hero-actions{flex-direction:column;align-items:stretch;width:100%}
   }
 </style>
+</head>
+<body>
+<a class="skip" href="#topics">Skip to topics</a>
 
 <div class="wrap">
-  <div class="topbar">
+  <header class="topbar" id="topbar">
     <a class="brandmark" href="index.html" aria-label="Afterglow — home">
-      <!-- currentColor, so the mark follows the theme instead of needing two files -->
       <svg viewBox="0 0 100 100" aria-hidden="true">
         <circle class="ring" cx="48.5" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="2.8"/>
         <circle class="dot t2"   cx="71.5" cy="30.7" r="9.6" fill="currentColor"/>
@@ -122,180 +644,438 @@
       <span class="wordmark">Afterglow</span>
     </a>
     <div class="tools" id="tools">
-      <a class="back" href="contribute.html">Add a topic</a>
+      <a class="navlink" href="contribute.html">Add a topic</a>
+      <a class="navlink pri" href="../dark-matter-visualizations.html">Try one <span>→</span></a>
     </div>
-  </div>
-  <div class="hero">
-    <h1>Physics you can poke at, not read about.</h1>
-    <p>Every topic here is a working simulation. The equations run live — change a number and
-       the sky changes with it. Nothing is a pre-rendered animation dressed up as a model.</p>
-    <p>Each page states plainly how confident the field actually is, because the difference
-       between <em>measured</em>, <em>argued about</em> and <em>untestable</em> is the most
-       important thing in science writing and the first thing usually thrown away.</p>
-    <div class="meta">open source · every claim carries a citation · contributions welcome</div>
-  </div>
+  </header>
 
-  <div class="rule"></div>
-
-  <h2 class="sec-title">How to read the badges</h2>
-  <div class="tiers">
-    <div>
-      <span class="tier tier-established">Established</span>
-      <p>Reproduced, quantitative, not seriously contested. You could look it up in a graduate textbook.</p>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow">Free · no account · works in your browser</p>
+      <h1 id="hero-title">Space science you can <em>play with</em>.</h1>
+      <p class="lede">
+        Pick a topic, drag things around, turn knobs — and watch real physics respond.
+        Nothing here is a pre-made video dressed up as a model.
+      </p>
+      <p class="lede-sub">
+        Every page also tells you how sure scientists are: solid fact, active debate, or pure idea.
+      </p>
+      <div class="hero-actions">
+        <a class="btn-cta primary" href="../dark-matter-visualizations.html">
+          Start with Dark Matter
+          <span class="arr" aria-hidden="true">→</span>
+        </a>
+        <a class="btn-cta ghost" href="#topics">See all topics</a>
+      </div>
     </div>
-    <div>
-      <span class="tier tier-active">Active research</span>
-      <p>Real data exists, but no consensus on what it means. Expect this page to change.</p>
-    </div>
-    <div>
-      <span class="tier tier-speculative">Speculative</span>
-      <p>Interesting, internally consistent, and currently impossible to test. Not the same as knowledge.</p>
-    </div>
-  </div>
 
-  <h2 class="sec-title">Settled physics</h2>
-  <p class="sec-lede">Working modules. Drag to orbit, scroll to zoom, change any parameter.</p>
-  <div class="grid">
-
-    <a class="card" href="../dark-matter-visualizations.html">
-      <h3>Dark Matter</h3>
-      <p>Four simulations across five independent lines of evidence. Switch off the invisible
-         mass and watch a galaxy fail to hold itself together.</p>
-      <div class="foot">
-        <span class="tier tier-established">Established</span>
-        <span>4 scenes · narrated</span>
-        <span class="go">Open →</span>
-      </div>
+    <a class="hero-mark" href="index.html" aria-label="Afterglow">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="ring" cx="48.5" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="2.8"/>
+        <circle class="dot t2"   cx="71.5" cy="30.7" r="9.6" fill="currentColor"/>
+        <circle class="dot t1"   cx="71.5" cy="30.7" r="9.6" fill="currentColor"/>
+        <circle class="dot lead" cx="71.5" cy="30.7" r="9.6" fill="currentColor"/>
+      </svg>
+      <span class="name">Afterglow</span>
+      <span class="name-sub">explore the universe</span>
     </a>
+  </section>
 
-    <a class="card" href="modules/stellar-life/index.html">
-      <h3>The Life of a Star</h3>
-      <p>One number — mass at birth — decides brightness, colour, lifespan and how it dies.
-         Run a star from molecular cloud to remnant on a live HR diagram.</p>
-      <div class="foot">
+  <section class="howto" aria-label="How this site works">
+    <article>
+      <p class="step">1 · Pick a topic</p>
+      <h2>Choose something curious</h2>
+      <p>Black holes, stars, galaxies, the Big Bang — each card opens a live simulation.</p>
+    </article>
+    <article>
+      <p class="step">2 · Touch the universe</p>
+      <h2>Drag, zoom, change numbers</h2>
+      <p>Move the camera with your finger or mouse. Slide a value and the picture updates for real.</p>
+    </article>
+    <article>
+      <p class="step">3 · Read the badge</p>
+      <h2>Know how solid it is</h2>
+      <p>We label every topic so “we measured this” never looks the same as “we’re still guessing.”</p>
+    </article>
+  </section>
+
+  <div class="badge-key" aria-labelledby="badge-key-title">
+    <p id="badge-key-title">What the coloured labels mean</p>
+    <ul>
+      <li>
         <span class="tier tier-established">Established</span>
-        <span>HR diagram · 0.05–60 M☉</span>
-        <span class="go">Open →</span>
-      </div>
-    </a>
-
-    <a class="card" href="modules/black-holes/index.html">
-      <h3>Black Holes</h3>
-      <p>Every pixel integrates a light ray through curved spacetime. See why the shadow is
-         far larger than the horizon — and why a bigger hole is gentler to fall into.</p>
-      <div class="foot">
-        <span class="tier tier-established">Established</span>
-        <span>ray-traced · 1–10¹⁰ M☉</span>
-        <span class="go">Open →</span>
-      </div>
-    </a>
-
-    <a class="card" href="modules/nebulae/index.html">
-      <h3>Nebulae</h3>
-      <p>The same cloud is pink, blue or black depending only on the star beside it. One
-         threshold — 13.6 eV — decides which.</p>
-      <div class="foot">
-        <span class="tier tier-established">Established</span>
-        <span>Strömgren spheres</span>
-        <span class="go">Open →</span>
-      </div>
-    </a>
-
-    <a class="card" href="modules/planet-formation/index.html">
-      <h3>Planet Formation</h3>
-      <p>Dust to worlds, and the snow line that decided why the inner planets are small. Includes
-         the one step nobody has fully solved.</p>
-      <div class="foot">
-        <span class="tier tier-established">Established</span>
-        <span>metre-size barrier</span>
-        <span class="go">Open →</span>
-      </div>
-    </a>
-
-    <a class="card" href="modules/expanding-universe/index.html">
-      <h3>The Expanding Universe</h3>
-      <p>Stand on any galaxy you like and every other one still recedes from you. Move yourself
-         and refit — the answer does not change.</p>
-      <div class="foot">
-        <span class="tier tier-established">Established</span>
-        <span>includes the H₀ tension</span>
-        <span class="go">Open →</span>
-      </div>
-    </a>
-
-    <a class="card" href="modules/big-bang/index.html">
-      <h3>The Big Bang</h3>
-      <p>Sixty decades of time on one slider, from the Planck era to now — and a shaded region
-         marking exactly where the evidence runs out.</p>
-      <div class="foot">
-        <span class="tier tier-established">Established</span>
-        <span>thermal history</span>
-        <span class="go">Open →</span>
-      </div>
-    </a>
-
-  </div>
-
-  <div class="rule"></div>
-
-  <h2 class="sec-title">Open questions</h2>
-  <p class="sec-lede">Real data, no consensus. These pages will need rewriting, and that is the
-     point of labelling them.</p>
-  <div class="grid">
-
-    <a class="card" href="modules/little-red-dots/index.html">
-      <h3>The Little Red Dots</h3>
-      <p>300+ objects JWST found that nobody predicted and nobody can yet explain. Four competing
-         models scored against the same eight observations.</p>
-      <div class="foot">
+        <p>Scientists agree. You could look this up in a textbook.</p>
+      </li>
+      <li>
         <span class="tier tier-active">Active research</span>
-        <span>discovered 2024</span>
-        <span class="go">Open →</span>
-      </div>
-    </a>
-
-    <a class="card" href="modules/are-we-alone/index.html">
-      <h3>Are We Alone?</h3>
-      <p>Three terms of the Drake equation are measured. Four are not, and they swing the answer
-         by twenty-six orders of magnitude.</p>
-      <div class="foot">
-        <span class="tier tier-active">Active research</span>
-        <span>no probability exists</span>
-        <span class="go">Open →</span>
-      </div>
-    </a>
-
-  </div>
-
-  <div class="rule"></div>
-
-  <h2 class="sec-title">Not currently testable</h2>
-  <p class="sec-lede">Included because the reasoning is interesting — and separated because
-     that is honest.</p>
-  <div class="grid">
-
-    <a class="card" href="modules/multiverse/index.html">
-      <h3>The Multiverse</h3>
-      <p>Eternal inflation, many-worlds and the string landscape are three different ideas, not
-         one. See precisely why no experiment separates them.</p>
-      <div class="foot">
+        <p>We have real data, but people still argue about what it means.</p>
+      </li>
+      <li>
         <span class="tier tier-speculative">Speculative</span>
-        <span>one test, came back negative</span>
-        <span class="go">Open →</span>
+        <p>A clever idea we cannot test yet. Interesting — not proven.</p>
+      </li>
+    </ul>
+  </div>
+
+  <section class="section" id="topics" aria-labelledby="settled-title">
+    <div class="section-head">
+      <h2 class="sec-title" id="settled-title">Things we understand well</h2>
+      <p class="sec-lede">These ideas are backed by strong evidence. Open any card and experiment.</p>
+    </div>
+
+    <a class="featured" id="featured-dm" href="../dark-matter-visualizations.html">
+      <div class="featured-copy">
+        <p class="kicker">Best place to start · has a guided tour</p>
+        <h3>Dark Matter</h3>
+        <p>Galaxies spin too fast for the stars we can see. Something invisible seems to hold them together —
+           and you can switch that “something” off to watch what happens.</p>
+        <div class="foot">
+          <span class="tier tier-established">Established</span>
+          <span>4 interactive scenes</span>
+          <span class="go">Open →</span>
+        </div>
+      </div>
+      <div class="fig fig-dm" aria-hidden="true">
+        <svg viewBox="0 0 200 140">
+          <defs>
+            <radialGradient id="dmHalo" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="var(--blue)" stop-opacity=".28"/>
+              <stop offset="55%" stop-color="var(--blue)" stop-opacity=".12"/>
+              <stop offset="100%" stop-color="var(--blue)" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="dmBulge" cx="35%" cy="35%" r="65%">
+              <stop offset="0%" stop-color="#F5E6C8"/>
+              <stop offset="45%" stop-color="var(--kraft)"/>
+              <stop offset="100%" stop-color="var(--clay)"/>
+            </radialGradient>
+          </defs>
+          <!-- Invisible halo -->
+          <circle class="halo" cx="52" cy="70" r="46"/>
+          <circle class="halo-edge" cx="52" cy="70" r="42"/>
+          <!-- Spin group (CSS) wraps incline group (SVG only) so transforms don't fight -->
+          <g class="disk-spin">
+            <g transform="translate(52 70) rotate(-22) scale(1 0.36) translate(-52 -70)">
+              <ellipse class="arm soft" cx="52" cy="70" rx="34" ry="34"/>
+              <path class="arm" d="M52 38c14 4 24 16 26 30 2 12-4 24-16 30"/>
+              <path class="arm" d="M52 102c-14-4-24-16-26-30-2-12 4-24 16-30"/>
+              <path class="arm soft" d="M24 58c12-10 28-14 40-8"/>
+              <path class="arm soft" d="M80 82c-12 10-28 14-40 8"/>
+            </g>
+          </g>
+          <circle class="bulge" cx="52" cy="70" r="5.5"/>
+          <g class="orbit-star">
+            <circle class="star" cx="78" cy="62" r="1.5"/>
+          </g>
+          <g class="orbit-star" style="animation-duration:20s;animation-direction:reverse">
+            <circle class="star" cx="34" cy="78" r="1.2"/>
+          </g>
+          <!-- Rotation curve panel -->
+          <path class="axis" d="M118 24v88M118 112h70"/>
+          <path class="gridline" d="M118 48h70M118 72h70M118 96h70"/>
+          <!-- Shaded gap between theory and data -->
+          <path class="gap" d="M130 44c12 2 22 14 30 28 8 14 16 22 28 26v14c-14-2-24-12-34-28S140 54 130 52Z"/>
+          <!-- Visible mass only (falls) -->
+          <path class="kepler" d="M122 38c12 4 22 20 32 38 8 16 18 28 34 32"/>
+          <!-- Observed (stays high) -->
+          <path class="observed" d="M122 38c10-1 18 4 26 12 10 10 18 12 28 11 12-1 22 1 30 4"/>
+          <text class="lab" x="148" y="126">distance →</text>
+          <text class="lab" x="106" y="78" transform="rotate(-90 106 78)">speed</text>
+          <text class="lab-clay lab" x="152" y="36">with dark matter</text>
+          <text class="lab" x="152" y="100">stars alone</text>
+        </svg>
       </div>
     </a>
 
-  </div>
+    <div class="grid">
+      <a class="card" data-tier="established" href="modules/stellar-life/index.html">
+        <div class="fig" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <circle class="accent-fill pulse" cx="28" cy="36" r="10"/>
+            <circle class="fill-soft pulse" cx="28" cy="36" r="16"/>
+            <path class="stroke-soft" d="M58 58V14M58 58h48"/>
+            <path class="accent draw" d="M64 52c8-4 12-18 20-24s14-6 20-12"/>
+            <circle class="accent-fill fade" cx="104" cy="16" r="2.5"/>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">01</span>
+          <h3>The Life of a Star</h3>
+          <p>How heavy a star is at birth decides almost everything: how bright it shines, what colour it is, and how it dies.</p>
+          <div class="foot">
+            <span class="tier tier-established">Established</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
 
-  <footer>
-    Built with three.js. Every module is one folder — physics, scene, plot, captions — so a new
-    topic can be added without touching the engine.
-    <a href="contribute.html">See how to add one →</a><br>
-    Research notes for the JWST and biosignature pages are in
-    <a href="../research/JWST_AND_LIFE.md">research/JWST_AND_LIFE.md</a>.<br>
-    Press <code>D</code> anywhere to switch theme.<br>
-    <em>Afterglow</em> — what cosmologists call the cosmic microwave background: the light
-    still arriving from the moment the universe turned transparent.
+      <a class="card" data-tier="established" href="modules/black-holes/index.html">
+        <div class="fig fig-bh" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <defs>
+              <linearGradient id="bhDisk" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="var(--clay)" stop-opacity=".15"/>
+                <stop offset="35%" stop-color="var(--kraft)" stop-opacity=".85"/>
+                <stop offset="55%" stop-color="#F2E2C0" stop-opacity=".95"/>
+                <stop offset="75%" stop-color="var(--clay)" stop-opacity=".8"/>
+                <stop offset="100%" stop-color="var(--clay)" stop-opacity=".1"/>
+              </linearGradient>
+              <linearGradient id="bhDiskHot" x1="100%" y1="0%" x2="0%" y2="0%">
+                <stop offset="0%" stop-color="var(--clay)" stop-opacity="0"/>
+                <stop offset="40%" stop-color="var(--clay-2)" stop-opacity=".7"/>
+                <stop offset="60%" stop-color="#FFF0D4" stop-opacity=".95"/>
+                <stop offset="100%" stop-color="var(--kraft)" stop-opacity=".2"/>
+              </linearGradient>
+              <linearGradient id="bhRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FFF3DC"/>
+                <stop offset="50%" stop-color="var(--clay-2)"/>
+                <stop offset="100%" stop-color="var(--kraft)"/>
+              </linearGradient>
+            </defs>
+            <!-- Far side of disk -->
+            <ellipse class="disk-back" cx="60" cy="40" rx="44" ry="13"/>
+            <!-- Straight ray that would miss, vs bent ray -->
+            <path class="ray-dim" d="M4 20h40"/>
+            <path class="ray" d="M4 22c18 2 28 6 36 14 6 6 8 12 6 18"/>
+            <!-- Photon ring -->
+            <circle class="photon" cx="60" cy="36" r="17"/>
+            <!-- Event-horizon shadow (larger than horizon) -->
+            <circle class="shadow" cx="60" cy="36" r="11"/>
+            <!-- Near side of disk (brighter crescent feel) -->
+            <path class="disk-front" d="M18 40a42 12 0 0 0 84 0a42 12 0 0 1-84 0"/>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">02</span>
+          <h3>Black Holes</h3>
+          <p>See the dark silhouette a black hole casts, and why a bigger one can actually be gentler to fall into.</p>
+          <div class="foot">
+            <span class="tier tier-established">Established</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
+
+      <a class="card" data-tier="established" href="modules/nebulae/index.html">
+        <div class="fig fig-neb" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <defs>
+              <radialGradient id="nebWash" cx="30%" cy="45%" r="70%">
+                <stop offset="0%" stop-color="#F5D0C4"/>
+                <stop offset="45%" stop-color="#E8B0A0"/>
+                <stop offset="100%" stop-color="#D8C4B8"/>
+              </radialGradient>
+              <radialGradient id="nebSphereSoft" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="var(--clay)" stop-opacity=".2"/>
+                <stop offset="70%" stop-color="var(--clay)" stop-opacity=".08"/>
+                <stop offset="100%" stop-color="var(--clay)" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+
+            <!-- Neutral cloud (default) -->
+            <path class="cloud-cold" d="M48 18c14-8 34-6 46 6 8 8 12 18 8 28-4 12-16 20-32 20-12 0-20-4-28-2-10 2-20-4-24-14-4-10 2-22 12-28 6-4 12-6 18-10z"/>
+            <!-- Same outline, pink when the star “turns on” -->
+            <path class="cloud-hot" d="M48 18c14-8 34-6 46 6 8 8 12 18 8 28-4 12-16 20-32 20-12 0-20-4-28-2-10 2-20-4-24-14-4-10 2-22 12-28 6-4 12-6 18-10z"/>
+
+            <!-- Ionization front (Strömgren sphere) -->
+            <circle class="front-fill" cx="36" cy="34" r="14"/>
+            <circle class="front" cx="36" cy="34" r="14"/>
+
+            <!-- Light rays (appear on hover) -->
+            <g class="ray" fill="none">
+              <path d="M36 34l12-10M36 34l14 2M36 34l10 12M36 34l-2 14"/>
+            </g>
+
+            <!-- Star -->
+            <circle class="star" cx="36" cy="34" r="4"/>
+
+            <text class="note" x="78" y="64">star off → grey dust</text>
+            <text class="note-hi" x="78" y="64">star on → pink glow</text>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">03</span>
+          <h3>Nebulae</h3>
+          <p>Why the same cloud of gas can look pink, blue, or almost black — it depends only on the star next to it.</p>
+          <div class="foot">
+            <span class="tier tier-established">Established</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
+
+      <a class="card" data-tier="established" href="modules/planet-formation/index.html">
+        <div class="fig" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <ellipse class="stroke-soft" cx="60" cy="40" rx="48" ry="16"/>
+            <ellipse class="stroke" cx="60" cy="40" rx="32" ry="11"/>
+            <ellipse class="accent" cx="60" cy="40" rx="20" ry="7" stroke-dasharray="3 3"/>
+            <circle class="accent-fill" cx="60" cy="40" r="5"/>
+            <g class="orbit-dot">
+              <circle class="ink" cx="92" cy="40" r="3"/>
+            </g>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">04</span>
+          <h3>How Planets Form</h3>
+          <p>From dust to worlds — and the icy “snow line” that helps explain why the inner planets stayed small.</p>
+          <div class="foot">
+            <span class="tier tier-established">Established</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
+
+      <a class="card" data-tier="established" href="modules/expanding-universe/index.html">
+        <div class="fig" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <circle class="accent-fill" cx="60" cy="36" r="4"/>
+            <circle class="ink out g1" cx="36" cy="22" r="2.5"/>
+            <circle class="ink out g2" cx="86" cy="20" r="2.5"/>
+            <circle class="ink out g3" cx="30" cy="50" r="2.2"/>
+            <circle class="ink out g4" cx="90" cy="52" r="2.4"/>
+            <circle class="ink out g5" cx="60" cy="14" r="2"/>
+            <path class="stroke-soft fade" d="M60 36l-18-12M60 36l20-12M60 36l-22 12M60 36l22 12"/>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">05</span>
+          <h3>The Expanding Universe</h3>
+          <p>Every galaxy is racing away from every other one. Stand anywhere you like — the picture stays the same.</p>
+          <div class="foot">
+            <span class="tier tier-established">Established</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
+
+      <a class="card" data-tier="established" href="modules/big-bang/index.html">
+        <div class="fig" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <circle class="stroke-soft bang-ring" cx="60" cy="36" r="14"/>
+            <circle class="stroke-soft bang-ring r2" cx="60" cy="36" r="14"/>
+            <circle class="accent-fill bang-core pulse" cx="60" cy="36" r="7"/>
+            <circle class="fill-soft bang-core" cx="60" cy="36" r="12" style="fill:var(--clay);opacity:.15"/>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">06</span>
+          <h3>The Big Bang</h3>
+          <p>Slide through the history of the universe — and see exactly where solid evidence stops and guesswork begins.</p>
+          <div class="foot">
+            <span class="tier tier-established">Established</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="open-title">
+    <div class="section-head">
+      <h2 class="sec-title" id="open-title">Still being figured out</h2>
+      <p class="sec-lede">Real discoveries with no settled answer yet. These pages may change as science does.</p>
+    </div>
+    <div class="grid cols-2">
+      <a class="card" data-tier="active" href="modules/little-red-dots/index.html">
+        <div class="fig" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <circle class="ink" cx="22" cy="18" r="1" opacity=".35"/>
+            <circle class="ink" cx="48" cy="12" r="1" opacity=".3"/>
+            <circle class="ink" cx="78" cy="20" r="1" opacity=".35"/>
+            <circle class="ink" cx="96" cy="14" r="1" opacity=".25"/>
+            <circle class="ink" cx="30" cy="40" r="1" opacity=".3"/>
+            <circle class="ink" cx="70" cy="48" r="1" opacity=".28"/>
+            <circle class="ink" cx="100" cy="42" r="1" opacity=".32"/>
+            <circle class="ink" cx="18" cy="56" r="1" opacity=".25"/>
+            <circle class="red-dot accent-fill" cx="40" cy="28" r="3"/>
+            <circle class="red-dot accent-fill" cx="68" cy="22" r="2.5"/>
+            <circle class="red-dot accent-fill" cx="86" cy="38" r="3.2"/>
+            <circle class="red-dot accent-fill" cx="52" cy="50" r="2.8"/>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">07</span>
+          <h3>The Little Red Dots</h3>
+          <p>Strange red objects the James Webb telescope found that no one expected. Scientists are still arguing over what they are.</p>
+          <div class="foot">
+            <span class="tier tier-active">Active research</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
+
+      <a class="card" data-tier="active" href="modules/are-we-alone/index.html">
+        <div class="fig" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <circle class="stroke wave" cx="36" cy="36" r="18"/>
+            <circle class="stroke wave w2" cx="36" cy="36" r="18"/>
+            <circle class="stroke wave w3" cx="36" cy="36" r="18"/>
+            <circle class="accent-fill" cx="36" cy="36" r="8"/>
+            <circle class="fill-soft" cx="36" cy="36" r="5" style="fill:var(--sage);opacity:.5"/>
+            <circle class="ink fade" cx="78" cy="20" r="1.5"/>
+            <circle class="ink fade" cx="96" cy="34" r="1.2"/>
+            <circle class="ink fade" cx="84" cy="52" r="1.4"/>
+            <circle class="ink fade" cx="104" cy="48" r="1"/>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">08</span>
+          <h3>Are We Alone?</h3>
+          <p>We know a few of the numbers that go into “how many civilisations?” — and the rest can swing the answer wildly.</p>
+          <div class="foot">
+            <span class="tier tier-active">Active research</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="spec-title">
+    <div class="section-head">
+      <h2 class="sec-title" id="spec-title">Ideas we cannot test yet</h2>
+      <p class="sec-lede">Worth thinking about — but not the same as knowledge. We keep them separate on purpose.</p>
+    </div>
+    <div class="grid cols-1">
+      <a class="card" data-tier="speculative" href="modules/multiverse/index.html">
+        <div class="fig" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <circle class="stroke bubble b1" cx="44" cy="34" r="22"/>
+            <circle class="accent bubble b2" cx="72" cy="30" r="18"/>
+            <circle class="stroke-soft bubble b3" cx="58" cy="46" r="16"/>
+            <circle class="fill-soft bubble b1" cx="44" cy="34" r="22" style="fill:var(--plum);opacity:.08"/>
+            <circle class="fill-soft bubble b2" cx="72" cy="30" r="18" style="fill:var(--clay);opacity:.1"/>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">09</span>
+          <h3>The Multiverse</h3>
+          <p>Are there other universes? Several theories say yes — but so far, no experiment can tell us which (if any) is right.</p>
+          <div class="foot">
+            <span class="tier tier-speculative">Speculative</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <footer class="site-foot">
+    <div>
+      <p class="foot-brand">
+        <em>Afterglow</em> is named after the faint light left over from the early universe —
+        still arriving today, from the moment the cosmos first became transparent.
+      </p>
+      <p class="foot-meta">
+        Built for curious people, not just specialists. Every simulation runs real equations in your browser.
+      </p>
+    </div>
+    <div class="foot-links">
+      <a href="contribute.html">Want to add a topic? →</a>
+      <a href="https://github.com/Tornadoguy69/afterglow" target="_blank" rel="noopener">View the code on GitHub</a>
+      <span class="hint">Press <code>D</code> to switch light / dark mode</span>
+    </div>
   </footer>
 </div>
 
@@ -303,4 +1083,32 @@
   import { initTheme, mountToggle } from './engine/theme.js';
   initTheme();
   mountToggle(document.getElementById('tools'));
+
+  const bar = document.getElementById('topbar');
+  const onScroll = () => bar.classList.toggle('scrolled', scrollY > 8);
+  onScroll();
+  addEventListener('scroll', onScroll, {passive:true});
+
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const paintChrome = () => {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if(meta) meta.content = dark ? '#1A1A18' : '#FAFAF7';
+  };
+  paintChrome();
+  document.addEventListener('themechange', paintChrome);
+
+  /* Draw the dark-matter curve when the featured card enters view. */
+  const feat = document.getElementById('featured-dm');
+  if(feat && 'IntersectionObserver' in window){
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if(e.isIntersecting){ feat.classList.add('is-inview'); io.disconnect(); }
+      });
+    }, {threshold:0.4});
+    io.observe(feat);
+  } else if(feat){
+    feat.classList.add('is-inview');
+  }
 </script>
+</body>
+</html>

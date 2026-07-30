@@ -52,6 +52,9 @@ a{color:var(--clay)}
 .tier-established{color:#4C7A52;border-color:#BFD4C0;background:#EEF4EE}
 .tier-active{color:#9A6520;border-color:#E4CFA6;background:#F7F0E1}
 .tier-speculative{color:#6B5E8C;border-color:#CFC6DE;background:#F1EEF6}
+:root[data-theme="dark"] .tier-established{color:#8FB183;border-color:#3A4A38;background:#243024}
+:root[data-theme="dark"] .tier-active{color:#D0A472;border-color:#4A3C28;background:#2E281E}
+:root[data-theme="dark"] .tier-speculative{color:#A98BC4;border-color:#3E3450;background:#2A2434}
 
 /* ---------- app shell ---------- */
 #app{display:flex;flex-direction:column;height:100%}
