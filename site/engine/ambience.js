@@ -25,9 +25,14 @@ const KEY = 'afterglow-ambience';
    ───────────────────────────────────────────────────────────────────────── */
 const PRESETS = {
   'black-holes':{
-    /* Felt more than heard: everything sits under 200 Hz. */
-    noise:{type:'brown', gain:0.16, lp:[45,190], lfo:0.028},
-    drones:[{f:27.5,g:0.20,detune:7},{f:41.2,g:0.09,detune:-6},{f:55,g:0.04,detune:4}],
+    /* Felt more than heard — but a bed that lives entirely under 200 Hz is not
+       subtle on a phone, it is silent: no phone speaker reproduces 27 Hz, and
+       most laptops give up below 200. The sub is kept for anyone on headphones,
+       and quiet upper partials of it carry the same pitch on small speakers.
+       Ear and brain reconstruct the missing fundamental from them. */
+    noise:{type:'brown', gain:0.16, lp:[45,560], lfo:0.028},
+    drones:[{f:27.5,g:0.20,detune:7},{f:41.2,g:0.09,detune:-6},{f:55,g:0.05,detune:4},
+            {f:110,g:0.032,detune:5},{f:165,g:0.016,detune:-8}],
     events:[{kind:'swell', every:[16,30], f:[34,64], g:0.13, dur:[8,14]}],
     wet:0.62
   },
@@ -55,8 +60,9 @@ const PRESETS = {
   },
   'expanding-universe':{
     /* Very slow and very wide. Nothing here should ever feel in a hurry. */
-    noise:{type:'brown', gain:0.09, lp:[70,420], lfo:0.018},
-    drones:[{f:36.7,g:0.13,detune:4},{f:55,g:0.07,detune:-9},{f:82.4,g:0.035,detune:6}],
+    noise:{type:'brown', gain:0.09, lp:[70,760], lfo:0.018},
+    drones:[{f:36.7,g:0.13,detune:4},{f:55,g:0.07,detune:-9},{f:82.4,g:0.035,detune:6},
+            {f:165,g:0.022,detune:7}],
     events:[{kind:'swell', every:[20,38], f:[50,110], g:0.10, dur:[11,18]}],
     wet:0.70
   },
@@ -70,8 +76,9 @@ const PRESETS = {
   },
   'little-red-dots':{
     /* Sparse and withholding. Long gaps are the point — this is an open problem. */
-    noise:{type:'brown', gain:0.08, lp:[60,330], lfo:0.032},
-    drones:[{f:43.7,g:0.12,detune:8},{f:58.3,g:0.05,detune:-6}],
+    noise:{type:'brown', gain:0.08, lp:[60,620], lfo:0.032},
+    drones:[{f:43.7,g:0.12,detune:8},{f:58.3,g:0.05,detune:-6},
+            {f:131,g:0.026,detune:6}],
     events:[{kind:'blip', every:[11,23], f:[380,1100], g:0.045, dur:[2.2,4.4]}],
     wet:0.66
   },

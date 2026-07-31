@@ -42,7 +42,7 @@
 </div>
 
 <script type="module">
-import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture, deepField } from '../../engine/engine.js';
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, tween, starTexture, deepField } from '../../engine/engine.js';
 import { tour } from '../../engine/tour.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -101,8 +101,11 @@ function nebulaType(T, hasStar){
     detail:'No nearby star. The cloud is visible only as a hole — it blocks the light of everything behind it.'};
   if(T >= 25000) return {k:'emission', name:'Emission nebula',
     detail:'The star floods the gas with photons above 13.6 eV. Hydrogen is ionised, recombines, and glows in its own lines. The red is Hα.'};
+  /* "Not hot enough to ionise anything" was too strong, and the readout right
+     next to it disproved it — a B star's Q is small, not zero. The bubble is
+     there; it is just ~80× smaller and lost under the scattered light. */
   if(T >= 8000)  return {k:'reflection', name:'Reflection nebula',
-    detail:'Not hot enough to ionise anything. Dust grains scatter the starlight instead, and scatter blue far more efficiently than red.'};
+    detail:'Still makes ionising photons, but orders of magnitude fewer — the bubble is too small to see. Dust scattering dominates instead, and dust scatters blue far more efficiently than red.'};
   return {k:'dark', name:'Dark nebula',
     detail:'The star is too cool to either ionise the gas or light the dust appreciably. The cloud stays dark.'};
 }
@@ -312,6 +315,17 @@ const setT    = v => { P.T=v; sT.set(v); update(); };
 const setN    = v => { P.n=v; sN.set(v); update(); };
 const setStar = v => { P.hasStar=v; tS.set(v); update(); };
 
+/* Each beat states the whole world it needs. Beats are reachable in any order —
+   the dots jump straight to one — so a beat that inherits state from the beat
+   before will play its words over the wrong nebula.
+
+   Temperature and density glide rather than snap: the whole point of this page
+   is that the colour is a continuous function of the star, and stepping the
+   value hides the very transition being described. */
+const glideT = (T, ms=2200) => tween('T', P.T, T, ms, setT);
+const glideN = (n, ms=2200) => tween('n', P.n, n, ms, setN, {log:true});
+const at = (T, n, star=true) => { setStar(star); glideT(T); glideN(n); };
+
 tour(app, {beats:[
 { say:'Those spectacular colours in space photographs are real. But here is the thing '+
       'almost nobody is told. The cloud has no colour of its own.',
@@ -320,57 +334,69 @@ tour(app, {beats:[
 
 { say:'It is the same gas every time. Mostly hydrogen, a little helium, a trace of dust. '+
       'What decides the colour is the star sitting inside it.',
-  hold:11 },
+  hold:11,
+  run(){ at(38000, 100); } },
 
 { say:'This star is at forty four thousand degrees. That is hot enough to pour out ultraviolet '+
       'light below ninety one point two nanometres — and that is exactly the energy it takes '+
       'to rip the electron off a hydrogen atom.',
   hold:15,
-  at:[{t:5.0, do(){ setT(44000); }}] },
+  /* Set on the beat, not part way through it. The sentence says "this star IS",
+     so the star has to already be at that temperature when the words land. */
+  run(){ at(44000, 100); } },
 
 { say:'The electrons get torn away, then find their way back, and every time one falls back it '+
       'gives out a photon of that deep red we call hydrogen alpha. '+
       'That is an emission nebula. The Orion Nebula is the famous one.',
-  hold:15, cam:{pos:[0,12,50], target:[0,0,0], ms:2800} },
+  hold:15, cam:{pos:[0,12,50], target:[0,0,0], ms:2800},
+  run(){ at(44000, 100); } },
 
 { say:'The bright ring marks the Strömgren radius — the boundary where ionisation and '+
       'recombination exactly balance. Inside it the gas glows. Outside it, nothing.',
-  hold:12 },
+  hold:12,
+  run(){ at(44000, 100); } },
 
 { say:'Now let me cool the star down to eighteen thousand degrees. Still hot. Still bright. '+
       'Watch what happens to the colour.',
   hold:9,
-  at:[{t:5.5, do(){ setT(18000); }}] },
+  run(){ at(44000, 100); },
+  at:[{t:5.5, do(){ glideT(18000, 3000); }}] },
 
-{ say:'The red is gone. This star simply cannot make ultraviolet hard enough to ionise '+
-      'hydrogen, so the gas never lights up. All you get is dust scattering the starlight, '+
-      'and dust scatters blue more efficiently than red — the same reason the sky is blue. '+
+{ say:'The red is gone. And look at the ionising photon count in the readout, because it is '+
+      'not zero — this star does still make ultraviolet. It just makes about half a million '+
+      'times less of it, and the bubble it can keep ionised shrinks by a factor of eighty. '+
+      'It is far too small to see. What is left is dust scattering the starlight, and dust '+
+      'scatters blue more efficiently than red — the same reason our sky is blue. '+
       'That is a reflection nebula. The Pleiades sit in one.',
-  hold:19, cam:{pos:[0,16,64], target:[0,0,0], ms:2600} },
+  hold:24, cam:{pos:[0,16,64], target:[0,0,0], ms:2600},
+  run(){ at(18000, 100); } },
 
 { say:'And now take the star away entirely.',
   hold:5,
+  run(){ at(18000, 100); },
   at:[{t:2.8, do(){ setStar(false); }}] },
 
 { say:'A dark nebula. The same cloud, unchanged, but with nothing to light it. '+
       'You only see it because it blocks the stars behind. The Horsehead is one of these.',
-  hold:13 },
+  hold:13,
+  run(){ at(18000, 100, false); } },
 
 { say:'One last thing, and it catches people out. Put the star back and let me make the gas '+
       'much denser — a hundred times denser.',
   hold:10,
-  run(){ setStar(true); setT(44000); },
-  at:[{t:6.0, do(){ setN(1e4); }}] },
+  run(){ at(44000, 100); },
+  at:[{t:6.0, do(){ glideN(1e4, 3000); }}] },
 
 { say:'The glowing bubble got smaller, not bigger. More gas means more atoms recombining every '+
       'second, so the star can only keep a smaller volume ionised. '+
       'The radius falls off as density to the minus two thirds. '+
       'More fuel, less fire.',
-  hold:16 },
+  hold:16,
+  run(){ at(44000, 1e4); } },
 
 { say:'Three completely different objects in every astronomy book, and the difference between '+
       'them is one star\'s temperature. The sliders are yours.',
   hold:11,
-  run(){ setN(100); setT(38000); } }
+  run(){ at(38000, 100); } }
 ]});
 </script>

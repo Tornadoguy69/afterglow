@@ -213,6 +213,53 @@ export function Plot(cfg){
   };
 }
 
+/* ─────────────────────────── parameter tweening ───────────────────────────
+   Guided-tour beats change parameters in steps. A step change in something the
+   eye is actively tracking — a star's radius as it leaves the main sequence, a
+   black hole's mass — reads as a glitch, not a transition: the picture freezes,
+   jumps, and carries on. Gliding the value instead lets the module's own update()
+   draw every frame in between, so the change becomes the animation.
+
+   Keyed so a second glide of the same parameter cancels the first rather than
+   the two fighting each other frame by frame. */
+const TWEENS = new Map();
+export function cancelTween(key){
+  const t = TWEENS.get(key);
+  if(t){ cancelAnimationFrame(t.raf); TWEENS.delete(key); }
+}
+/* requestAnimationFrame stops dead in a background tab, so a glide started just
+   before the tab is hidden would never finish — the parameter would sit stuck at
+   a half-applied value until something else moved it. Land every pending glide on
+   its final value instead: the state a beat promises must always arrive, whether
+   or not anyone was watching it happen. */
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden) return;
+  TWEENS.forEach((t,key)=>{ cancelAnimationFrame(t.raf); t.apply(t.to); t.done && t.done(); });
+  TWEENS.clear();
+});
+export function tween(key, from, to, ms, apply, opts={}){
+  cancelTween(key);
+  const snap = ms<=0 || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(snap || from===to){ apply(to); return; }
+  /* Quantities whose slider is logarithmic — mass, density — have to be
+     interpolated in log space or the first half of the move eats the whole range. */
+  const log = opts.log && from>0 && to>0;
+  const a = log? Math.log(from) : from;
+  const b = log? Math.log(to)   : to;
+  const t0 = performance.now();
+  const rec = {to, apply, done:opts.done, raf:0};
+  const step = now => {
+    const u = Math.min(1,(now-t0)/ms);
+    const e = u<0.5 ? 4*u*u*u : 1-Math.pow(-2*u+2,3)/2;   // easeInOutCubic
+    const v = a + (b-a)*e;
+    apply(log? Math.exp(v) : v);
+    if(u<1){ rec.raf = requestAnimationFrame(step); TWEENS.set(key, rec); }
+    else { TWEENS.delete(key); opts.done && opts.done(); }
+  };
+  rec.raf = requestAnimationFrame(step);
+  TWEENS.set(key, rec);
+}
+
 /* ─────────────────────────── textures ─────────────────────────── */
 export function starTexture(spikes){
   const s=128, c=document.createElement('canvas'); c.width=c.height=s;

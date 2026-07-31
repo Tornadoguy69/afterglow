@@ -256,13 +256,15 @@
     content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--clay);
     transition:width .22s var(--ease);
   }
-  a.featured:hover{
+  a.featured:hover,
+  a.featured.inview{
     border-color:color-mix(in srgb, var(--clay) 40%, var(--line-2));
     background:var(--paper-3);
     transform:translateY(-3px);
     box-shadow:0 16px 40px rgba(0,0,0,.08);
   }
-  a.featured:hover::before{width:5px}
+  a.featured:hover::before,
+  a.featured.inview::before{width:5px}
   .featured-copy{min-width:0}
   .featured .kicker{
     font-family:var(--sans);font-size:12px;font-weight:600;color:var(--clay);
@@ -285,7 +287,8 @@
     margin-left:auto;color:var(--clay);font-weight:500;font-size:13px;
     transition:transform .2s var(--ease),color .15s var(--ease);
   }
-  a.featured:hover .go{color:var(--clay-2);transform:translateX(4px)}
+  a.featured:hover .go,
+  a.featured.inview .go{color:var(--clay-2);transform:translateX(4px)}
 
   .card{
     display:flex;flex-direction:column;gap:0;
@@ -304,13 +307,15 @@
   .card[data-tier="established"]{--card-accent:var(--sage)}
   .card[data-tier="active"]{--card-accent:var(--kraft)}
   .card[data-tier="speculative"]{--card-accent:var(--plum)}
-  a.card:hover{
+  a.card:hover,
+  a.card.inview{
     border-color:color-mix(in srgb, var(--card-accent) 35%, var(--line-2));
     background:var(--paper-3);
     transform:translateY(-3px);
     box-shadow:0 14px 32px rgba(0,0,0,.07);
   }
-  a.card:hover::before{width:4px}
+  a.card:hover::before,
+  a.card.inview::before{width:4px}
   a.card:active{transform:translateY(-1px) scale(.995)}
 
   .card-body{display:flex;flex-direction:column;gap:8px;padding:14px 18px 16px;flex:1}
@@ -335,7 +340,9 @@
     margin-left:auto;color:var(--clay);font-weight:500;font-size:12px;
     transition:transform .2s var(--ease),color .15s var(--ease);
   }
-  a.card:hover .go,a.featured:hover .go{color:var(--clay-2);transform:translateX(4px)}
+  a.card:hover .go,a.featured:hover .go,
+  a.card.inview .go,
+  a.featured.inview .go{color:var(--clay-2);transform:translateX(4px)}
 
   /* Diagram stage */
   .fig{
@@ -349,7 +356,8 @@
     background:linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
     transition:background .25s var(--ease);
   }
-  a.card:hover .fig{background:linear-gradient(180deg, var(--paper) 0%, var(--paper-3) 100%)}
+  a.card:hover .fig,
+  a.card.inview .fig{background:linear-gradient(180deg, var(--paper) 0%, var(--paper-3) 100%)}
   .featured .fig{padding:8px 0;color:var(--ink-3)}
   .fig svg{width:100%;height:100%;max-height:100px;overflow:visible}
   .featured .fig svg{max-height:160px}
@@ -362,60 +370,87 @@
 
   /* Idle = quiet; hover = motion (per topic) */
   .fig .spin{transform-origin:center;transform-box:fill-box;animation:fig-spin 18s linear infinite paused}
-  a.card:hover .fig .spin,a.featured:hover .fig .spin{animation-play-state:running}
+  a.card:hover .fig .spin,a.featured:hover .fig .spin,
+  a.card.inview .fig .spin,
+  a.featured.inview .fig .spin{animation-play-state:running}
   .fig .spin-fast{animation-duration:7s}
   @keyframes fig-spin{to{transform:rotate(360deg)}}
 
   .fig .pulse{transform-origin:center;transform-box:fill-box;transition:transform .45s var(--ease),opacity .45s var(--ease)}
-  a.card:hover .fig .pulse,a.featured:hover .fig .pulse{animation:fig-pulse 1.6s ease-in-out infinite}
+  a.card:hover .fig .pulse,a.featured:hover .fig .pulse,
+  a.card.inview .fig .pulse,
+  a.featured.inview .fig .pulse{animation:fig-pulse 1.6s ease-in-out infinite}
   @keyframes fig-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 
   .fig .draw{
     stroke-dasharray:120;stroke-dashoffset:120;
     transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1);
   }
-  a.card:hover .fig .draw,a.featured:hover .fig .draw{stroke-dashoffset:0}
+  a.card:hover .fig .draw,a.featured:hover .fig .draw,
+  a.card.inview .fig .draw,
+  a.featured.inview .fig .draw{stroke-dashoffset:0}
 
   .fig .fade{opacity:.35;transition:opacity .35s var(--ease)}
-  a.card:hover .fig .fade,a.featured:hover .fig .fade{opacity:1}
+  a.card:hover .fig .fade,a.featured:hover .fig .fade,
+  a.card.inview .fig .fade,
+  a.featured.inview .fig .fade{opacity:1}
 
   .fig .orbit-dot{transform-origin:60px 40px;animation:fig-orbit 8s linear infinite paused}
-  a.card:hover .fig .orbit-dot{animation-play-state:running}
+  a.card:hover .fig .orbit-dot,
+  a.card.inview .fig .orbit-dot{animation-play-state:running}
   @keyframes fig-orbit{to{transform:rotate(360deg)}}
 
   .fig .out{transition:transform .55s cubic-bezier(.2,.8,.2,1)}
-  a.card:hover .fig .g1{transform:translate(-6px,-5px)}
-  a.card:hover .fig .g2{transform:translate(7px,-4px)}
-  a.card:hover .fig .g3{transform:translate(-7px,5px)}
-  a.card:hover .fig .g4{transform:translate(6px,6px)}
-  a.card:hover .fig .g5{transform:translate(0,-7px)}
+  a.card:hover .fig .g1,
+  a.card.inview .fig .g1{transform:translate(-6px,-5px)}
+  a.card:hover .fig .g2,
+  a.card.inview .fig .g2{transform:translate(7px,-4px)}
+  a.card:hover .fig .g3,
+  a.card.inview .fig .g3{transform:translate(-7px,5px)}
+  a.card:hover .fig .g4,
+  a.card.inview .fig .g4{transform:translate(6px,6px)}
+  a.card:hover .fig .g5,
+  a.card.inview .fig .g5{transform:translate(0,-7px)}
 
   .fig .wave{opacity:0;transform-origin:center;transform-box:fill-box}
-  a.card:hover .fig .wave{animation:fig-wave 1.8s ease-out infinite}
-  a.card:hover .fig .wave.w2{animation-delay:.35s}
-  a.card:hover .fig .wave.w3{animation-delay:.7s}
+  a.card:hover .fig .wave,
+  a.card.inview .fig .wave{animation:fig-wave 1.8s ease-out infinite}
+  a.card:hover .fig .wave.w2,
+  a.card.inview .fig .wave.w2{animation-delay:.35s}
+  a.card:hover .fig .wave.w3,
+  a.card.inview .fig .wave.w3{animation-delay:.7s}
   @keyframes fig-wave{
     0%{opacity:.55;transform:scale(.35)}
     100%{opacity:0;transform:scale(1.65)}
   }
 
   .fig .bang-ring{transform-origin:center;transform-box:fill-box;opacity:.4;transition:transform .55s var(--ease),opacity .4s var(--ease)}
-  a.card:hover .fig .bang-ring{transform:scale(1.55);opacity:.75}
-  a.card:hover .fig .bang-ring.r2{transform:scale(2.1);transition-delay:.06s}
-  a.card:hover .fig .bang-core{transform:scale(1.15)}
+  a.card:hover .fig .bang-ring,
+  a.card.inview .fig .bang-ring{transform:scale(1.55);opacity:.75}
+  a.card:hover .fig .bang-ring.r2,
+  a.card.inview .fig .bang-ring.r2{transform:scale(2.1);transition-delay:.06s}
+  a.card:hover .fig .bang-core,
+  a.card.inview .fig .bang-core{transform:scale(1.15)}
   .fig .bang-core{transform-origin:center;transform-box:fill-box;transition:transform .45s var(--ease)}
 
   .fig .red-dot{transform-origin:center;transform-box:fill-box;transition:transform .35s var(--ease)}
-  a.card:hover .fig .red-dot{animation:fig-twinkle 1.4s ease-in-out infinite}
-  a.card:hover .fig .red-dot:nth-child(2){animation-delay:.15s}
-  a.card:hover .fig .red-dot:nth-child(3){animation-delay:.3s}
-  a.card:hover .fig .red-dot:nth-child(4){animation-delay:.45s}
+  a.card:hover .fig .red-dot,
+  a.card.inview .fig .red-dot{animation:fig-twinkle 1.4s ease-in-out infinite}
+  a.card:hover .fig .red-dot:nth-child(2),
+  a.card.inview .fig .red-dot:nth-child(2){animation-delay:.15s}
+  a.card:hover .fig .red-dot:nth-child(3),
+  a.card.inview .fig .red-dot:nth-child(3){animation-delay:.3s}
+  a.card:hover .fig .red-dot:nth-child(4),
+  a.card.inview .fig .red-dot:nth-child(4){animation-delay:.45s}
   @keyframes fig-twinkle{0%,100%{transform:scale(1)}50%{transform:scale(1.45)}}
 
   .fig .bubble{transform-origin:center;transform-box:fill-box;transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .35s var(--ease)}
-  a.card:hover .fig .b1{transform:translate(-3px,-2px) scale(1.04)}
-  a.card:hover .fig .b2{transform:translate(4px,-1px) scale(1.06)}
-  a.card:hover .fig .b3{transform:translate(1px,3px) scale(1.05)}
+  a.card:hover .fig .b1,
+  a.card.inview .fig .b1{transform:translate(-3px,-2px) scale(1.04)}
+  a.card:hover .fig .b2,
+  a.card.inview .fig .b2{transform:translate(4px,-1px) scale(1.06)}
+  a.card:hover .fig .b3,
+  a.card.inview .fig .b3{transform:translate(1px,3px) scale(1.05)}
 
   /* ── Dark Matter: spiral + halo + rotation curve ── */
   .fig-dm{color:var(--ink-3)}
@@ -424,18 +459,21 @@
     transform-origin:52px 70px;
     transition:opacity .45s var(--ease),transform .55s cubic-bezier(.2,.8,.2,1);
   }
-  a.featured:hover .fig-dm .halo{opacity:.9;transform:scale(1.08)}
+  a.featured:hover .fig-dm .halo,
+  a.featured.inview .fig-dm .halo{opacity:.9;transform:scale(1.08)}
   .fig-dm .halo-edge{
     fill:none;stroke:var(--blue);stroke-width:1.2;opacity:.35;
     transition:opacity .4s var(--ease),stroke-width .4s var(--ease);
   }
-  a.featured:hover .fig-dm .halo-edge{opacity:.75;stroke-width:1.6}
+  a.featured:hover .fig-dm .halo-edge,
+  a.featured.inview .fig-dm .halo-edge{opacity:.75;stroke-width:1.6}
   /* Outer group is centered at the bulge; CSS only rotates this group */
   .fig-dm .disk-spin{
     transform-origin:52px 70px;
     animation:fig-spin 28s linear infinite;
   }
-  a.featured:hover .fig-dm .disk-spin{animation-duration:10s}
+  a.featured:hover .fig-dm .disk-spin,
+  a.featured.inview .fig-dm .disk-spin{animation-duration:10s}
   .fig-dm .arm{
     fill:none;stroke:var(--kraft);stroke-width:1.6;stroke-linecap:round;opacity:.75;
   }
@@ -446,7 +484,8 @@
     transform-origin:52px 70px;
     animation:fig-spin 14s linear infinite;
   }
-  a.featured:hover .fig-dm .orbit-star{animation-duration:5.5s}
+  a.featured:hover .fig-dm .orbit-star,
+  a.featured.inview .fig-dm .orbit-star{animation-duration:5.5s}
   .fig-dm .axis{stroke:var(--ink-4);stroke-width:1;opacity:.45;fill:none}
   .fig-dm .gridline{stroke:var(--line-2);stroke-width:1;opacity:.8;fill:none}
   .fig-dm .kepler{
@@ -459,12 +498,14 @@
     transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1);
   }
   a.featured:hover .fig-dm .observed,
-  .featured.is-inview .fig-dm .observed{stroke-dashoffset:0}
+  .featured.is-inview .fig-dm .observed,
+  a.featured.inview .fig-dm .observed{stroke-dashoffset:0}
   .fig-dm .gap{
     fill:color-mix(in srgb, var(--clay) 12%, transparent);
     opacity:0;transition:opacity .5s .2s var(--ease);
   }
-  a.featured:hover .fig-dm .gap,.featured.is-inview .fig-dm .gap{opacity:1}
+  a.featured:hover .fig-dm .gap,.featured.is-inview .fig-dm .gap,
+  a.featured.inview .fig-dm .gap{opacity:1}
   .fig-dm .lab{
     font-family:var(--sans);font-size:7.5px;fill:var(--ink-4);
   }
@@ -476,20 +517,23 @@
     transform-origin:60px 38px;transform-box:fill-box;
     animation:fig-spin 16s linear infinite paused;
   }
-  a.card:hover .fig-bh .disk-back{animation-play-state:running}
+  a.card:hover .fig-bh .disk-back,
+  a.card.inview .fig-bh .disk-back{animation-play-state:running}
   .fig-bh .disk-front{
     fill:url(#bhDiskHot);opacity:.95;
     transform-origin:60px 38px;transform-box:fill-box;
     animation:fig-spin 16s linear infinite paused;
   }
-  a.card:hover .fig-bh .disk-front{animation-play-state:running;animation-duration:7s}
+  a.card:hover .fig-bh .disk-front,
+  a.card.inview .fig-bh .disk-front{animation-play-state:running;animation-duration:7s}
   .fig-bh .photon{
     fill:none;stroke:url(#bhRing);stroke-width:2.4;
     filter:drop-shadow(0 0 3px color-mix(in srgb, var(--clay) 50%, transparent));
     transform-origin:60px 36px;transform-box:fill-box;
     transition:transform .4s var(--ease),stroke-width .4s var(--ease);
   }
-  a.card:hover .fig-bh .photon{
+  a.card:hover .fig-bh .photon,
+  a.card.inview .fig-bh .photon{
     transform:scale(1.05);
     stroke-width:2.8;
     animation:bh-glow 1.8s ease-in-out infinite;
@@ -506,7 +550,8 @@
     opacity:0;stroke-dasharray:60;stroke-dashoffset:60;
     transition:opacity .25s var(--ease),stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1);
   }
-  a.card:hover .fig-bh .ray{opacity:.85;stroke-dashoffset:0}
+  a.card:hover .fig-bh .ray,
+  a.card.inview .fig-bh .ray{opacity:.85;stroke-dashoffset:0}
   .fig-bh .ray-dim{
     fill:none;stroke:var(--ink-4);stroke-width:1;stroke-linecap:round;opacity:.3;
   }
@@ -520,8 +565,10 @@
     fill:url(#nebWash);stroke:color-mix(in srgb, var(--clay) 40%, var(--line-2));stroke-width:1.3;
     opacity:0;transition:opacity .5s var(--ease);
   }
-  a.card:hover .fig-neb .cloud-cold{opacity:.25}
-  a.card:hover .fig-neb .cloud-hot{opacity:1}
+  a.card:hover .fig-neb .cloud-cold,
+  a.card.inview .fig-neb .cloud-cold{opacity:.25}
+  a.card:hover .fig-neb .cloud-hot,
+  a.card.inview .fig-neb .cloud-hot{opacity:1}
 
   .fig-neb .front{
     fill:none;stroke:var(--clay);stroke-width:1.5;stroke-dasharray:4 3;
@@ -529,7 +576,8 @@
     transform-origin:36px 34px;
     transition:transform .55s cubic-bezier(.2,.8,.2,1),opacity .4s var(--ease),stroke-dasharray .4s var(--ease);
   }
-  a.card:hover .fig-neb .front{
+  a.card:hover .fig-neb .front,
+  a.card.inview .fig-neb .front{
     transform:scale(1.55);opacity:.85;stroke-dasharray:0;
   }
 
@@ -538,14 +586,16 @@
     transform-origin:36px 34px;
     transition:transform .55s cubic-bezier(.2,.8,.2,1),opacity .45s var(--ease);
   }
-  a.card:hover .fig-neb .front-fill{opacity:1;transform:scale(1.55)}
+  a.card:hover .fig-neb .front-fill,
+  a.card.inview .fig-neb .front-fill{opacity:1;transform:scale(1.55)}
 
   .fig-neb .star{
     fill:var(--ink-4);
     transform-origin:36px 34px;transform-box:fill-box;
     transition:fill .35s var(--ease),transform .4s var(--ease);
   }
-  a.card:hover .fig-neb .star{
+  a.card:hover .fig-neb .star,
+  a.card.inview .fig-neb .star{
     fill:var(--clay);
     transform:scale(1.25);
     filter:drop-shadow(0 0 4px color-mix(in srgb, var(--clay) 45%, transparent));
@@ -555,18 +605,21 @@
     stroke:var(--clay);stroke-width:1.1;stroke-linecap:round;
     opacity:0;transition:opacity .35s var(--ease);
   }
-  a.card:hover .fig-neb .ray{opacity:.4}
+  a.card:hover .fig-neb .ray,
+  a.card.inview .fig-neb .ray{opacity:.4}
 
   .fig-neb .note{
     font-family:var(--sans);font-size:7.5px;fill:var(--ink-4);
     opacity:.75;transition:opacity .3s var(--ease);
   }
-  a.card:hover .fig-neb .note{opacity:0}
+  a.card:hover .fig-neb .note,
+  a.card.inview .fig-neb .note{opacity:0}
   .fig-neb .note-hi{
     font-family:var(--sans);font-size:7.5px;fill:var(--clay);
     opacity:0;transition:opacity .35s .08s var(--ease);
   }
-  a.card:hover .fig-neb .note-hi{opacity:1}
+  a.card:hover .fig-neb .note-hi,
+  a.card.inview .fig-neb .note-hi{opacity:1}
 
   /* Footer */
   footer.site-foot{
@@ -1183,6 +1236,28 @@
     io.observe(feat);
   } else if(feat){
     feat.classList.add('is-inview');
+  }
+
+  /* ── the touch equivalent of hover ──────────────────────────────────────
+     Every card figure animates on :hover, which simply never fires on a phone —
+     so most visitors were getting the static version of artwork built to move.
+     On touch, scrolling a card into view stands in for pointing at it.
+
+     Gated on (hover:none) rather than on width: a small window on a laptop still
+     has a real pointer and should keep true hover semantics. The class is dropped
+     again on the way out so the animation replays, which is what makes a long
+     scroll feel alive rather than firing once and dying. */
+  if(matchMedia('(hover: none)').matches && 'IntersectionObserver' in window){
+    const cards = document.querySelectorAll('a.card, a.featured');
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => e.target.classList.toggle('inview', e.isIntersecting));
+    }, {
+      /* Trigger around the middle of the screen, not the edge, so the card is
+         actually being looked at when its figure starts moving. */
+      rootMargin: '-25% 0px -25% 0px',
+      threshold: 0
+    });
+    cards.forEach(c => io.observe(c));
   }
 </script>
 </body>

@@ -42,7 +42,7 @@
 </div>
 
 <script type="module">
-import { THREE, boot, ui, Plot, PAL, el, fmt, sci } from '../../engine/engine.js';
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, tween } from '../../engine/engine.js';
 import { tour } from '../../engine/tour.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -433,6 +433,13 @@ update();
 const setM    = v => { P.M=v; sM.set(v); update(); };
 const setDisk = v => { P.disk=v; tDisk.set(v); uni.uDiskOn.value = v?1:0; };
 
+/* Every beat declares the whole world it needs. The dots jump straight to any
+   beat, so one that inherits state from its predecessor narrates the wrong hole.
+   Mass glides in log space — stepping it from four million to ten solar masses
+   makes the horizon pop out of existence instead of shrinking. */
+const glideM = (M, ms=2000) => tween('M', P.M, M, ms, setM, {log:true});
+const at = (M, disk=true) => { setDisk(disk); glideM(M); };
+
 tour(app, {beats:[
 { say:'Everything you can see on this screen comes out of one equation. '+
       'The radius of a black hole is two G M over c squared — and that is it. '+
@@ -443,22 +450,26 @@ tour(app, {beats:[
 { say:'This is Sagittarius A star, the black hole at the centre of our own galaxy. '+
       'Four million times the mass of the Sun. The Event Horizon Telescope photographed it '+
       'in twenty twenty two.',
-  hold:13 },
+  hold:13,
+  run(){ at(4.297e6); } },
 
 { say:'Let me take the glowing disk away, so there is nothing left but the hole and '+
       'the stars behind it.',
   hold:8,
+  run(){ at(4.297e6); },
   at:[{t:4.5, do(){ setDisk(false); }}] },
 
 { say:'Look carefully at the edge. The starfield does not stop at the black circle. '+
       'It wraps around it. You are seeing stars that are physically behind the black hole, '+
       'their light bent around the sides and delivered to your eye.',
-  hold:15, cam:{pos:[0,2.4,11], target:[0,0,0], ms:3000} },
+  hold:15, cam:{pos:[0,2.4,11], target:[0,0,0], ms:3000},
+  run(){ at(4.297e6, false); } },
 
 { say:'Every pixel on this screen is a light ray traced backwards through curved spacetime '+
       'to find out where it really came from. It is not a picture of a black hole. '+
       'It is a calculation of one.',
-  hold:14 },
+  hold:14,
+  run(){ at(4.297e6, false); } },
 
 { say:'That thin bright circle is the photon ring. Light can actually orbit the black hole '+
       'there, going round and round before escaping towards you. '+
@@ -466,38 +477,47 @@ tour(app, {beats:[
       'times bigger — because the hole bends light around itself and blocks more sky '+
       'than it physically covers.',
   hold:20,
+  run(){ at(4.297e6, false); },
   at:[{t:8.0, do(){ setDisk(true); }}] },
 
 { say:'Now watch what mass actually does. This is a stellar black hole, ten times the Sun, '+
       'the kind left behind when a heavy star collapses.',
   hold:10, cam:{pos:[0,4.2,17], target:[0,0,0], ms:2400},
-  at:[{t:4.0, do(){ setM(10); }}] },
+  /* "This is" — so it has to already be, before the sentence starts. */
+  run(){ at(10); } },
 
-{ say:'Its horizon is about thirty kilometres across. You could drive around it in an hour. '+
-      'But look at the tidal stretch in the readout — the difference in pull between your head '+
-      'and your feet. It is enormous. A small black hole would pull you apart '+
-      'long before you reached it.',
-  hold:17 },
+/* The readout gives the Schwarzschild *radius*. Saying "thirty kilometres across"
+   describes a diameter and contradicts the number on screen by a factor of two. */
+{ say:'The readout says thirty kilometres, and that is the radius — so about sixty across. '+
+      'An entire black hole that would sit inside a small city. '+
+      'But now look at the tidal stretch, the difference in pull between your head and your '+
+      'feet. It is enormous. A black hole this small would pull you apart long before '+
+      'you ever reached it.',
+  hold:19,
+  run(){ at(10); } },
 
 { say:'Now M eighty seven star, six and a half thousand million solar masses, '+
       'the first black hole ever photographed.',
   hold:9,
-  at:[{t:4.5, do(){ setM(6.5e9); }}] },
+  run(){ at(10); },
+  at:[{t:4.5, do(){ glideM(6.5e9, 3200); }}] },
 
 { say:'This one is larger than our entire solar system. And here is the counterintuitive part. '+
       'The readout now says crossing the horizon is survivable. '+
       'The bigger the black hole, the gentler the edge. '+
       'You would cross it without noticing anything at all.',
-  hold:17 },
+  hold:17,
+  run(){ at(6.5e9); } },
 
 { say:'One more thing worth knowing. Black holes do slowly evaporate — Hawking showed that '+
       'in nineteen seventy four. But look at the evaporation time. '+
       'For anything this size it is longer than the age of the universe by a factor with '+
       'sixty zeroes after it. These are not going anywhere.',
-  hold:18 },
+  hold:18,
+  run(){ at(6.5e9); } },
 
 { say:'The mass slider is yours. Everything on screen recomputes from that one number.',
   hold:8,
-  run(){ setM(4.297e6); } }
+  run(){ at(4.297e6); } }
 ]});
 </script>
