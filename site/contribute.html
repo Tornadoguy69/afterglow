@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="How to add a new topic to Afterglow — one folder, real physics, honest confidence labels.">
-<title>Contribute — Afterglow</title>
+<meta name="description" content="How to help Afterglow — report something wrong, suggest a topic, or build one. Most of it needs no code.">
+<title>How to help — Afterglow</title>
 <link rel="icon" type="image/svg+xml" href="engine/logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,6 +33,30 @@
   .sub{font-family:var(--serif);font-size:14px;color:var(--ink-3);margin:0 0 20px;max-width:64ch}
 
   /* interactive anatomy */
+  /* Three routes in, ordered by effort. The page used to open straight into
+     module anatomy, which serves only people who can already build one — and
+     leaves out the reader who just spotted a wrong number, which is the most
+     valuable contribution this site can get. */
+  .routes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 0 44px}
+  .route{
+    display:flex;flex-direction:column;gap:8px;text-decoration:none;
+    border:1px solid var(--line-2);border-radius:14px;background:var(--paper-2);
+    padding:18px 20px 16px;position:relative;overflow:hidden;
+    transition:border-color .18s var(--ease),transform .18s var(--ease),box-shadow .18s var(--ease);
+  }
+  .route::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--clay);
+    opacity:.45;transition:width .18s var(--ease),opacity .18s var(--ease)}
+  .route:hover{border-color:var(--ink-4);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.10)}
+  .route:hover::before{width:4px;opacity:1}
+  .route .rk{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-4)}
+  .route b{font-family:var(--serif);font-size:19px;font-weight:400;color:var(--ink);line-height:1.25}
+  .route .rd{font-family:var(--serif);font-size:13.5px;line-height:1.58;color:var(--ink-2);flex:1}
+  .route .go{font-family:var(--sans);font-size:12.5px;font-weight:500;color:var(--clay);margin-top:4px;
+    transition:transform .18s var(--ease)}
+  .route:hover .go{transform:translateX(4px)}
+  .step-h{font-family:var(--serif);font-size:21px;font-weight:400;color:var(--ink);
+    margin:34px 0 6px;letter-spacing:-.01em}
+  @media (max-width:820px){ .routes{grid-template-columns:1fr} }
   .anatomy{display:grid;grid-template-columns:minmax(230px,280px) 1fr;gap:16px;align-items:start}
   @media(max-width:760px){.anatomy{grid-template-columns:1fr}}
   .tree{border:1px solid var(--line-2);border-radius:12px;background:var(--paper-2);padding:12px;
@@ -108,32 +132,66 @@
 <div class="wrap">
   <div class="topbar">
     <a class="back" href="index.html">← All topics</a>
-    <h1>Add a topic</h1>
+    <h1>How to help</h1>
     <div class="tools" id="tools"></div>
   </div>
 
-  <p class="lede">One topic is one folder. The engine already handles the renderer, bloom,
-     camera, smooth zoom, resizing, the draggable inspector, panel widgets, the plotter,
-     theming and tooltips — you supply physics, a scene, a plot and captions.</p>
-  <p class="lede">Nothing here is boilerplate you have to memorise. Click through the anatomy
-     below, copy the starter, and check your work against the list at the bottom.</p>
+  <p class="lede"><b>You do not need to be a programmer to help.</b> The most useful thing
+     anyone has done for this site so far is point out a number that was wrong.</p>
 
-  <h2>Anatomy of a module</h2>
+  <div class="routes">
+    <a class="route" href="https://github.com/Tornadoguy69/afterglow/issues/new?labels=correction&amp;title=Something%20looks%20wrong%20on%20:%20&amp;body=Which%20page:%0A%0AWhat%20it%20says:%0A%0AWhy%20I%20think%20it%20is%20wrong%20(a%20link%20or%20a%20paper%20if%20you%20have%20one):%0A"
+       target="_blank" rel="noopener">
+      <span class="rk">No code · 2 minutes</span>
+      <b>Something here is wrong</b>
+      <span class="rd">A number that looks off, a claim that overstates the evidence, a
+        confusing sentence. Tell us the page and what looks wrong. You do not need to be
+        certain, and you do not need a source — several real errors on this site were
+        found exactly this way.</span>
+      <span class="go">Report it →</span>
+    </a>
+
+    <a class="route" href="https://github.com/Tornadoguy69/afterglow/issues/new?labels=topic%20idea&amp;title=Topic%20idea:%20&amp;body=What%20is%20the%20topic:%0A%0AWhat%20should%20a%20reader%20be%20able%20to%20change%20and%20watch%20happen:%0A%0AWhy%20it%20is%20hard%20to%20picture%20from%20words%20alone:%0A"
+       target="_blank" rel="noopener">
+      <span class="rk">No code · 5 minutes</span>
+      <b>Something is missing</b>
+      <span class="rd">Suggest a topic. The ones that work best are the ones you cannot
+        picture from a paragraph — where you have to move something to understand it.
+        Describe what a reader should be able to change, and what they would see.</span>
+      <span class="go">Suggest it →</span>
+    </a>
+
+    <a class="route" href="#build">
+      <span class="rk">Some JavaScript · an afternoon</span>
+      <b>Build one yourself</b>
+      <span class="rd">If you can write a bit of JavaScript, you can add a whole topic.
+        You write the physics and what goes on screen; everything else — the 3D view,
+        the camera, the controls, the charts, dark mode, the narrated tour — is already
+        handled for you.</span>
+      <span class="go">Read on →</span>
+    </a>
+  </div>
+
+  <h2 id="build">Building one yourself</h2>
+  <p class="sub">Everything below is for the third route. One topic is one folder. You supply
+     the physics, a scene, a chart and the captions; the shared engine supplies the rest.</p>
+
+  <h3 class="step-h">Anatomy of a module</h3>
   <p class="sub">Click any file.</p>
   <div class="anatomy">
     <div class="tree" id="tree" role="tablist" aria-label="Module files"></div>
     <div class="detail" id="detail" role="tabpanel"></div>
   </div>
 
-  <h2>Starter</h2>
-  <p class="sub">A complete, working module in forty lines. Copy it into
+  <h3 class="step-h">A working starter you can copy</h3>
+  <p class="sub">A complete, working topic in forty lines — it runs as-is. Copy it into
      <code>modules/your-topic/index.html</code> and start replacing.</p>
   <div class="codewrap">
     <button class="copy" id="copyBtn">Copy</button>
     <pre id="starter"></pre>
   </div>
 
-  <h2>What gets a module rejected</h2>
+  <h3 class="step-h">What would get it turned down</h3>
   <p class="sub">All four of these are real mistakes made while building this site, caught in review.</p>
   <div class="cards">
     <div class="rej"><b>A number with no source</b><span>If a quantitative claim appears on
@@ -148,8 +206,8 @@
       bloom, point size, colour scales. Never tune the equations.</span></div>
   </div>
 
-  <h2>Before you open a pull request</h2>
-  <p class="sub">Tick these off. The bar is the same one every existing module was held to.</p>
+  <h3 class="step-h">Before you send it in</h3>
+  <p class="sub">Tick these off, then open a pull request on GitHub — that is the button that says "propose changes" once you have edited a file. The bar is the same one every existing topic was held to, including the ones that failed it first time.</p>
   <div class="check" id="check"></div>
   <div class="progress"><span id="count">0 / 8</span><span class="bar"><i id="barfill"></i></span></div>
   <div class="verdict" id="verdict">Work through the list and this will tell you when you are ready.</div>
