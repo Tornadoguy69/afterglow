@@ -86,6 +86,19 @@
   .topbar .navlink.pri{background:var(--clay);color:#FCFBF8;border-color:var(--clay)}
   .topbar .navlink.pri:hover{background:var(--clay-2);border-color:var(--clay-2);color:#fff}
 
+  /* Inline badge key — the badges are met before their full legend. */
+  .key-inline{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    font-family:var(--sans);font-size:12px;color:var(--ink-4);margin:12px 0 0;
+  }
+  .key-inline a{color:var(--ink-3);text-decoration:none;border-bottom:1px solid var(--line-2)}
+  .key-inline a:hover{color:var(--clay);border-bottom-color:var(--clay)}
+
+  /* Header CTA is secondary: the hero owns the primary action. Two clay-filled
+     buttons in one viewport pointing at different places is a coin toss. */
+  .topbar .navlink.pri{background:transparent;color:var(--ink-2);border-color:var(--line-2)}
+  .topbar .navlink.pri:hover{background:var(--paper-3);color:var(--clay);border-color:var(--clay)}
+
   /* ---------- hero ---------- */
   .hero{
     padding:52px 0 8px;
@@ -673,6 +686,18 @@
     .hero-mark,.hero-copy{order:unset;justify-self:center}
     .hero-mark{order:-1}
     .hero-copy{display:flex;flex-direction:column;align-items:center}
+    /* On a tablet the lockup is a hero illustration; on a phone it is the
+       header's own wordmark repeated 170px lower, and it pushes the headline
+       and the first topic card down by exactly that much. The header already
+       says Afterglow — the hero does not need to say it again. */
+    @media (max-width:640px){
+      .hero-mark{display:none}
+      .hero{padding-top:20px;gap:0;padding-bottom:0}
+      #topics{margin-top:26px}
+      .key-inline{gap:6px;font-size:11.5px}
+      /* The hero already carries the primary action on a phone. */
+      .topbar .navlink.pri{display:none}
+    }
     .hero h1{max-width:18ch}
     .hero .lede,.hero .lede-sub{max-width:42ch}
     .hero-actions{justify-content:center}
@@ -728,18 +753,15 @@
       <p class="eyebrow">Free · no account · works in your browser</p>
       <h1 id="hero-title">Space science you can <em>play with</em>.</h1>
       <p class="lede">
-        Pick a topic, drag things around, turn knobs — and watch real physics respond.
-        Nothing here is a pre-made video dressed up as a model.
-      </p>
-      <p class="lede-sub">
-        Every page also tells you how sure scientists are: solid fact, active debate, or pure idea.
+        Real simulations you can grab hold of — and every one tells you
+        how sure scientists actually are.
       </p>
       <div class="hero-actions">
         <a class="btn-cta primary" href="../dark-matter-visualizations.html">
           Start with Dark Matter
           <span class="arr" aria-hidden="true">→</span>
         </a>
-        <a class="btn-cta ghost" href="#topics">See all topics</a>
+        <a class="btn-cta ghost" href="#how">How it works</a>
       </div>
     </div>
 
@@ -755,47 +777,19 @@
     </a>
   </section>
 
-  <section class="howto" aria-label="How this site works">
-    <article>
-      <p class="step">1 · Pick a topic</p>
-      <h2>Choose something curious</h2>
-      <p>Black holes, stars, galaxies, the Big Bang — each card opens a live simulation.</p>
-    </article>
-    <article>
-      <p class="step">2 · Press play</p>
-      <h2>Let it explain itself</h2>
-      <p>Every topic has a narrated walkthrough that moves the controls for you while it talks.
-         Then take over — drag, zoom, change any number and the picture updates for real.</p>
-    </article>
-    <article>
-      <p class="step">3 · Read the badge</p>
-      <h2>Know how solid it is</h2>
-      <p>We label every topic so “we measured this” never looks the same as “we’re still guessing.”</p>
-    </article>
-  </section>
-
-  <div class="badge-key" aria-labelledby="badge-key-title">
-    <p id="badge-key-title">What the coloured labels mean</p>
-    <ul>
-      <li>
-        <span class="tier tier-established">Established</span>
-        <p>Scientists agree. You could look this up in a textbook.</p>
-      </li>
-      <li>
-        <span class="tier tier-active">Active research</span>
-        <p>We have real data, but people still argue about what it means.</p>
-      </li>
-      <li>
-        <span class="tier tier-speculative">Speculative</span>
-        <p>A clever idea we cannot test yet. Interesting — not proven.</p>
-      </li>
-    </ul>
-  </div>
-
   <section class="section" id="topics" aria-labelledby="settled-title">
     <div class="section-head">
       <h2 class="sec-title" id="settled-title">Things we understand well</h2>
       <p class="sec-lede">These ideas are backed by strong evidence. Open any card and experiment.</p>
+      <!-- The badges are now met before the full legend, which lives below the
+           topics. This one line is the minimum needed to read a card correctly. -->
+      <p class="key-inline">
+        Every card is labelled
+        <span class="tier tier-established">Established</span>
+        <span class="tier tier-active">Active research</span>
+        <span class="tier tier-speculative">Speculative</span>
+        <a href="#how">what these mean →</a>
+      </p>
     </div>
 
     <a class="featured" id="featured-dm" href="../dark-matter-visualizations.html">
@@ -1135,6 +1129,48 @@
       </a>
     </div>
   </section>
+
+  <!-- The explainers sit AFTER the topics on purpose. The first version put a
+       three-step row and a badge legend between the hero and the cards, which
+       pushed the first real topic to 1314px — 1.6 screens down on a phone.
+       Anyone who wants the explanation will scroll for it; nobody scrolls to
+       find out what the site even offers. -->
+  <section class="howto" id="how" aria-label="How this site works">
+    <article>
+      <p class="step">1 · Pick a topic</p>
+      <h2>Choose something curious</h2>
+      <p>Black holes, stars, galaxies, the Big Bang — each card opens a live simulation.</p>
+    </article>
+    <article>
+      <p class="step">2 · Press play</p>
+      <h2>Let it explain itself</h2>
+      <p>Every topic has a narrated walkthrough that moves the controls for you while it talks.
+         Then take over — drag, zoom, change any number and the picture updates for real.</p>
+    </article>
+    <article>
+      <p class="step">3 · Read the badge</p>
+      <h2>Know how solid it is</h2>
+      <p>We label every topic so “we measured this” never looks the same as “we’re still guessing.”</p>
+    </article>
+  </section>
+
+  <div class="badge-key" aria-labelledby="badge-key-title">
+    <p id="badge-key-title">What the coloured labels mean</p>
+    <ul>
+      <li>
+        <span class="tier tier-established">Established</span>
+        <p>Scientists agree. You could look this up in a textbook.</p>
+      </li>
+      <li>
+        <span class="tier tier-active">Active research</span>
+        <p>We have real data, but people still argue about what it means.</p>
+      </li>
+      <li>
+        <span class="tier tier-speculative">Speculative</span>
+        <p>A clever idea we cannot test yet. Interesting — not proven.</p>
+      </li>
+    </ul>
+  </div>
 
   <footer class="site-foot">
     <div>
