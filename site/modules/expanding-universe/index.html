@@ -42,7 +42,7 @@
 </div>
 
 <script type="module">
-import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture } from '../../engine/engine.js';
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture, tween, cancelTween } from '../../engine/engine.js';
 import { tour } from '../../engine/tour.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -258,69 +258,87 @@ const setPlay = v => { P.play=v; playBtn.textContent = v?'❚❚  Pause':'▶  R
 const setObs  = i => { P.obs=i; update(); };
 const setH0   = shoes => { P.tension=shoes; tog.set(shoes); H0 = shoes?H0_SHOES:H0_PLANCK; update(); };
 
+/* Each beat declares the whole world it needs — the dots jump straight to any
+   beat, so inheriting state from the one before narrates the wrong universe.
+   The scale factor glides: it IS the expansion, and stepping it teleports every
+   galaxy instead of showing the thing being described. */
+const glideA = (a, ms=2600) => tween('a', P.a, a, ms, setA);
+const at = (a, obs, shoes=false, play=false) => {
+  setPlay(false); setObs(obs); setH0(shoes);
+  if(play){ cancelTween('a'); setA(a); setPlay(true); }   // the loop owns a while playing
+  else glideA(a);
+};
+const MID = Math.floor(NG/2);
+
 tour(app, {beats:[
 { say:'Every galaxy in this box is sitting perfectly still. Nothing here is flying anywhere. '+
       'Watch what happens to them anyway.',
   hold:8, cam:{pos:[0,90,190], target:[0,0,0], ms:1800},
-  run(){ setPlay(false); setA(1); setObs(Math.floor(NG/2)); setH0(false); } },
+  run(){ at(1, MID); } },
 
 { say:'You are the bright blue one in the middle. Let time run forward.',
   hold:6,
-  run(){ setPlay(true); } },
+  run(){ at(1, MID, false, true); } },
 
 { say:'Every single galaxy is moving away from you, and the further one is, the faster it goes. '+
       'That is not an explosion pushing things outward. The galaxies are not moving. '+
       'The distance between them is growing.',
-  hold:12 },
+  hold:12,
+  run(){ at(1, MID, false, true); } },
 
 { say:'Look at the chart. Distance along the bottom, speed up the side, and the points fall on '+
       'a straight line. Hubble measured that line in nineteen twenty nine, and its slope is the '+
       'expansion rate of the universe.',
-  hold:13, cam:{pos:[0,60,150], target:[0,0,0], ms:2600} },
+  hold:13, cam:{pos:[0,60,150], target:[0,0,0], ms:2600},
+  run(){ at(1, MID, false, true); } },
 
 { say:'Here is the part that trips almost everyone up. If everything is running away from us, '+
       'surely we are at the centre of it. So let me move you.',
   hold:10,
-  run(){ setPlay(false); },
+  run(){ at(1, MID); },
   at:[{t:6.5, do(){ setObs(NG-1); }}] },
 
 { say:'You are now a galaxy at the far corner of the box, thousands of millions of light years '+
       'from where you were. And the chart is identical. Same straight line, same slope.',
-  hold:11, cam:{pos:[0,110,230], target:[0,0,0], ms:2400} },
+  hold:11, cam:{pos:[0,110,230], target:[0,0,0], ms:2400},
+  run(){ at(1, NG-1); } },
 
 { say:'Try another one at random. And another. It never changes. '+
       'Every galaxy sees itself at the centre, which is the same as saying there is no centre at all.',
   hold:11,
-  run(){ setObs(Math.floor(NG*0.31)); },
+  run(){ at(1, Math.floor(NG*0.31)); },
   at:[{t:4.0, do(){ setObs(Math.floor(NG*0.72)); }},
       {t:7.5, do(){ setObs(Math.floor(NG*0.08)); }}] },
 
 { say:'Now wind the clock backwards instead. The scale factor is the size of the universe '+
       'compared to today, and I am taking it down to a fifth.',
   hold:10,
-  run(){ setObs(Math.floor(NG/2)); },
-  at:[{t:4.2, do(){ setA(0.20); }}] },
+  run(){ at(1, MID); },
+  at:[{t:4.2, do(){ glideA(0.20, 3400); }}] },
 
 { say:'Everything is packed five times closer together. Light leaving a galaxy at this moment '+
       'arrives at us stretched out by a factor of five. That stretching is redshift, and it is '+
       'how we know how far back we are looking.',
-  hold:13 },
+  hold:13,
+  run(){ at(0.20, MID); } },
 
 { say:'Back to today. Notice the readout that says some galaxies are receding faster than light. '+
       'That is allowed. Nothing is travelling through space faster than light. '+
       'There is simply more space appearing between us than light can cross.',
   hold:14, cam:{pos:[0,140,420], target:[0,0,0], ms:3000},
-  run(){ setA(1); } },
+  run(){ at(1, MID); } },
 
 { say:'One last thing, and it is an open problem. The expansion rate measured from the early '+
       'universe is sixty seven point four. Measured from nearby stars and supernovae, it is '+
       'seventy three. Both teams are careful. Watch the age of the universe when I switch.',
   hold:15,
+  run(){ at(1, MID, false); },
   at:[{t:11.5, do(){ setH0(true); }}] },
 
 { say:'The universe just got about a billion years younger, and nobody knows which number is '+
       'wrong. That disagreement is called the Hubble tension, and it is one of the biggest '+
       'unsolved problems in cosmology right now. The controls are yours.',
-  hold:14 }
+  hold:14,
+  run(){ at(1, MID, true); } }
 ]});
 </script>

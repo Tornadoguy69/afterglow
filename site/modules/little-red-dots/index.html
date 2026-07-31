@@ -301,75 +301,90 @@ update();
    ═══════════════════════════════════════════════════════════════════════════ */
 const setModel = k => { P.model=k; update(); };
 
+/* Only one piece of state on this page — which model is selected — but the
+   scorecard is the whole point, so every beat has to pin it. */
+const at = k => setModel(k);
+
 tour(app, {beats:[
 { say:'This one is different from everything else on this site. '+
       'Every other page explains something we understand. '+
       'This page is about something nobody understands yet.',
   hold:13, cam:{pos:[0,10,52], target:[0,0,0], ms:1800},
-  run(){ setModel('Black hole star'); } },
+  run(){ at('Black hole star'); } },
 
 { say:'In twenty twenty four, the James Webb Space Telescope found these. '+
       'Small, extremely red objects, sitting at a distance where the universe was only '+
       'a few hundred million years old. Nobody predicted them. Over three hundred are '+
       'now known and there is still no agreed explanation for what they are.',
-  hold:21 },
+  hold:21 ,
+  run(){ at('Black hole star'); }},
 
 { say:'Start with what is not in dispute. Look at the spectrum. '+
       'It is very red in visible light, but it turns blue again in the ultraviolet. '+
       'That V shape is the signature, and it is strange — '+
       'ordinary dusty galaxies do not do that.',
-  hold:17, cam:{pos:[0,6,34], target:[0,0,0], ms:2800} },
+  hold:17, cam:{pos:[0,6,34], target:[0,0,0], ms:2800} ,
+  run(){ at('Black hole star'); }},
 
 { say:'They are compact. Smaller than about a hundred parsecs, which is tiny for something '+
       'this bright. And they show broad hydrogen emission lines — gas moving at a '+
       'thousand to three thousand kilometres a second.',
-  hold:16 },
+  hold:16 ,
+  run(){ at('Black hole star'); } },
 
 { say:'Normally, gas moving that fast means one thing: it is whipping around a black hole. '+
       'That would settle it. Except for the next fact.',
-  hold:11 },
+  hold:11 ,
+  run(){ at('Black hole star'); }},
 
 { say:'There are no X-rays. Not a trace, even when you stack hundreds of images together. '+
       'A black hole feeding hard enough to make those emission lines should be pouring out '+
       'X-rays, and it simply is not. That contradiction is the whole problem.',
-  hold:18 },
+  hold:18 ,
+  run(){ at('Black hole star'); }},
 
 { say:'So here are four serious explanations, all of them live in the current literature. '+
       'The first says these are massive black hole seeds that formed straight out of '+
       'collapsing gas, skipping the usual star-and-supernova route.',
   hold:17,
-  at:[{t:8.0, do(){ setModel('Direct-collapse seed'); }}] },
+  at:[{t:8.0, do(){ setModel('Direct-collapse seed'); }}] ,
+  run(){ at('Direct-collapse seed'); }},
 
 { say:'Look at the scorecard. It explains most of what we see, and it contradicts the X-rays '+
       'and the lack of flickering. Note that. It is not a bad theory — it just does not '+
       'account for everything.',
-  hold:14 },
+  hold:14 ,
+  run(){ at('Direct-collapse seed'); } },
 
 { say:'The second says these are ordinary black holes feeding far above the rate '+
       'you would normally think possible, in short violent bursts.',
   hold:11,
-  at:[{t:5.5, do(){ setModel('Super-Eddington bursts'); }}] },
+  at:[{t:5.5, do(){ setModel('Super-Eddington bursts'); }}] ,
+  run(){ at('Super-Eddington bursts'); }},
 
 { say:'The third is the strangest and currently the most talked about. '+
       'A black hole wrapped inside an enormous envelope of gas so thick that it looks '+
       'like a single vast star from outside. The envelope would swallow the X-rays.',
   hold:16,
-  at:[{t:7.0, do(){ setModel('Black hole star'); }}] },
+  at:[{t:7.0, do(){ setModel('Black hole star'); }}] ,
+  run(){ at('Black hole star'); }},
 
 { say:'And the fourth says there is no black hole at all — just extraordinarily massive '+
       'stars packed unbelievably tightly together.',
   hold:10,
-  at:[{t:5.0, do(){ setModel('Supermassive first stars'); }}] },
+  at:[{t:5.0, do(){ setModel('Supermassive first stars'); }}] ,
+  run(){ at('Supermassive first stars'); }},
 
 { say:'Click between them and watch the scorecard change. That is the honest state of it. '+
       'Four different pictures of what these objects are, each one accounting for some of '+
       'the evidence and tripping over the rest.',
   hold:16,
-  run(){ setModel('Black hole star'); } },
+  run(){ at('Black hole star'); } },
 
 { say:'I am not going to tell you which is right, because nobody knows. '+
       'Expect this page to be wrong within a year. That is not a flaw in the page — '+
       'that is what an open problem looks like while it is still open.',
-  hold:16 }
+  hold:16 ,
+  run(){ at('Black hole star'); }}
 ]});
 </script>

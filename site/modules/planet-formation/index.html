@@ -42,7 +42,7 @@
 </div>
 
 <script type="module">
-import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture, deepField } from '../../engine/engine.js';
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture, deepField , tween, cancelTween} from '../../engine/engine.js';
 import { tour } from '../../engine/tour.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -318,75 +318,98 @@ const setT    = v => { P.t=v; sT.set(v); update(); };
 const setR    = v => { P.r=v; sR.set(v); update(); };
 const setPlay = v => { P.play=v; playBtn.textContent = v?'❚❚  Pause':'▶  Grow'; };
 
+/* Each beat declares the whole world it needs — beats are reachable in any
+   order, so inheriting state narrates the wrong disk. Growth stage and radius
+   both glide: stepping them teleports the bodies instead of growing them. */
+const glideT = (t, ms=2000) => tween('pf-t', P.t, t, ms, setT);
+const glideR = (r, ms=2200) => tween('pf-r', P.r, r, ms, setR, {log:true});
+const at = (t, r, play=false) => {
+  setPlay(false); glideR(r);
+  if(play){ cancelTween('pf-t'); setT(t); setPlay(true); }   // loop owns t while playing
+  else glideT(t);
+};
+
 tour(app, {beats:[
 { say:'Every planet you have ever heard of started as dust. Grains a thousandth of a '+
       'millimetre across, orbiting a new star in a flat disk like this one.',
   hold:12, cam:{pos:[0,58,96], target:[0,0,0], ms:1800},
-  run(){ setPlay(false); setT(0); setR(1); } },
+  run(){ at(0, 1); } },
 
 { say:'Getting from that to a planet means growing by about thirteen orders of magnitude. '+
       'Let me run it.',
   hold:8,
-  at:[{t:4.5, do(){ setPlay(true); }}] },
+  at:[{t:4.5, do(){ setPlay(true); }}] ,
+  run(){ at(0, 1, true); }},
 
 { say:'Dust grains bump gently and stick together with static, the way dust bunnies form '+
       'under a bed. They become pebbles. So far this is easy, and it has been reproduced '+
       'in laboratories.',
   hold:14,
-  at:[{t:9.0, do(){ setPlay(false); setT(0.36); }}] },
+  at:[{t:9.0, do(){ setPlay(false); setT(0.36); }}] ,
+  run(){ at(0.10, 1, true); }},
 
 { say:'And then everything stops. This is the metre size barrier, and it is a genuine '+
       'unsolved problem in astrophysics.',
-  hold:10, cam:{pos:[0,34,62], target:[0,0,0], ms:2600} },
+  hold:10, cam:{pos:[0,34,62], target:[0,0,0], ms:2600} ,
+  run(){ at(0.36, 1); }},
 
 { say:'Two things go wrong at once. Boulders this size hit each other hard enough to shatter '+
       'instead of stick. And look at the readout for how long they take to spiral into the star. '+
       'It bottoms out right here. The gas in the disk drags on them, and they fall inward in '+
       'a few hundred years.',
-  hold:19 },
+  hold:19 ,
+  run(){ at(0.36, 1); } },
 
 { say:'A few hundred years. That is nothing. Every boulder in this disk should have been '+
       'swallowed by the star long before it could grow into anything. '+
       'And yet here we are, standing on the result.',
-  hold:13 },
+  hold:13 ,
+  run(){ at(0.36, 1); }},
 
 { say:'The leading answer is the streaming instability — solids clumping together '+
       'collectively and collapsing under their own gravity, skipping the dangerous sizes '+
       'entirely. It works in simulations. It is not yet a settled account of every disk.',
-  hold:16 },
+  hold:16 ,
+  run(){ at(0.36, 1); }},
 
 { say:'Past that barrier it gets easy again. Gravity takes over, and bigger bodies sweep up '+
       'smaller ones faster and faster.',
   hold:10,
-  at:[{t:5.0, do(){ setPlay(true); }}] },
+  at:[{t:5.0, do(){ setPlay(true); }}] ,
+  run(){ at(0.42, 1, true); }},
 
 { say:'Planetesimals, then protoplanets, then planets.',
   hold:6,
-  at:[{t:4.5, do(){ setPlay(false); setT(1.0); }}] },
+  at:[{t:4.5, do(){ setPlay(false); setT(1.0); }}] ,
+  run(){ at(0.62, 1, true); }},
 
 { say:'Now the second big idea on this page. That pale blue circle is the snow line. '+
       'Inside it, water is vapour. Outside it, water is ice.',
-  hold:12, cam:{pos:[0,72,120], target:[0,0,0], ms:2800} },
+  hold:12, cam:{pos:[0,72,120], target:[0,0,0], ms:2800} ,
+  run(){ at(1.0, 1); }},
 
 { say:'Let me put you at one astronomical unit — where Earth is. Inside the line. '+
       'Warm, and the only solid material available is rock and metal, which is scarce. '+
       'So you build something small.',
   hold:15,
-  run(){ setR(1.0); } },
+  run(){ at(1.0, 1); } },
 
 { say:'Now move out to five astronomical units, where Jupiter is.',
   hold:6,
-  at:[{t:3.2, do(){ setR(5.0); }}] },
+  at:[{t:3.2, do(){ setR(5.0); }}] ,
+  run(){ at(1.0, 1); }},
 
 { say:'Beyond the snow line water is solid, and water is abundant, so the amount of building '+
       'material jumps by roughly four times. You grow a core fast enough to start pulling in '+
       'gas directly, and once that starts it runs away. That is why the outer planets '+
       'are giants and the inner ones are not.',
-  hold:19 },
+  hold:19 ,
+  run(){ at(1.0, 5); }},
 
 { say:'One line in a disk of gas, drawn by nothing more than the temperature where water '+
       'freezes, and it decided what kind of planet we live on. '+
       'Drag the radius slider and watch what forms where.',
-  hold:14 }
+  hold:14 ,
+  run(){ at(1.0, 5); }}
 ]});
 </script>

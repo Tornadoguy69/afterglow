@@ -198,7 +198,7 @@ panel.appendChild(ui.section('Guessed — nobody knows these', guessed,
     update();
   }))),
   ui.note('Every one of these presets has been seriously argued for in the literature. '+
-          'They span <b>fourteen orders of magnitude</b> in the final answer.')));
+          'They span <b>about twenty five orders of magnitude</b> in the final answer.')));
 
 const ro=ui.readout([
   {id:'N',   k:'civilisations in the galaxy now', cls:'big',
@@ -249,7 +249,7 @@ function drawPlot(){
   p.vline(0, PAL.line2, [2,3]);
   p.label('measured', p.x0+8, p.y1+15, PAL.sage);
   p.label('guessed',  p.x0+78, p.y1+15, PAL.clay);
-  p.label('the four bars on the right span 8–14 orders of magnitude',
+  p.label('the four bars on the right span roughly 25 orders of magnitude',
           p.x0+8, p.y0-9, PAL.ink3);
 }
 const supers = n => String(n).replace('-','⁻').replace(/\d/g,d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
@@ -309,78 +309,95 @@ const setScenario = name => {
   update();
 };
 
+/* The measured terms and the guessed terms are separate state. A beat that
+   inherits either one shows the wrong N, which is the entire argument. */
+const setMeasured = (R, fp, ne) => { setTerm('R',R); setTerm('fp',fp); setTerm('ne',ne); };
+const at = (scenario, R=1.6, fp=1.0, ne=0.4) => { setScenario(scenario); setMeasured(R,fp,ne); };
+
 tour(app, {beats:[
 { say:'This is the Milky Way from above, and somewhere on it is the question '+
       'everybody actually wants answered. Are we the only ones?',
   hold:11, cam:{pos:[0,150,120], target:[0,0,0], ms:1800},
-  run(){ setScenario('Middle'); } },
+  run(){ at('Middle'); } },
 
 { say:'In nineteen sixty one Frank Drake wrote down an equation for it. '+
       'Seven numbers multiplied together. How many stars form, how many have planets, '+
       'how many of those could hold life, and so on down to how long a civilisation '+
       'stays detectable.',
-  hold:19 },
+  hold:19 ,
+  run(){ at('Middle'); }},
 
 { say:'The equation is not the interesting part. Where the numbers come from is. '+
       'Look at the panel — it is split in two, and that split is the whole story.',
-  hold:12 },
+  hold:12 ,
+  run(){ at('Middle'); }},
 
 { say:'The top three are measured. We actually know them now, which Drake did not. '+
       'Stars form in this galaxy at about one and a half a year. '+
       'Essentially every star has planets — microlensing settled that. '+
       'And Kepler told us roughly what fraction have a rocky world at the right distance.',
-  hold:21 },
+  hold:21 ,
+  run(){ at('Middle'); }},
 
 { say:'Now watch this. I am going to take those three measured terms and swing them across '+
       'their entire plausible range, as far in each direction as anyone would defend.',
   hold:13,
-  at:[{t:7.0, do(){ setTerm('R',0.5); setTerm('fp',0.1); setTerm('ne',0.01); }}] },
+  at:[{t:7.0, do(){ setTerm('R',0.5); setTerm('fp',0.1); setTerm('ne',0.01); }}] ,
+  run(){ at('Middle'); }},
 
 { say:'And back the other way, to the most generous values.',
   hold:7,
-  at:[{t:3.0, do(){ setTerm('R',10); setTerm('fp',1.0); setTerm('ne',2); }}] },
+  at:[{t:3.0, do(){ setTerm('R',10); setTerm('fp',1.0); setTerm('ne',2); }}] ,
+  run(){ at('Middle', 0.5, 0.1, 0.01); }},
 
-{ say:'The answer barely moved. A factor of a few hundred, which sounds like a lot until '+
-      'you see what comes next. Everything we have actually measured makes almost '+
-      'no difference to the result.',
+{ say:'That is the entire range of everything we have actually measured, end to end. '+
+      'About four and a half orders of magnitude. Hold on to that number, because the four '+
+      'terms nobody can measure are about to do five times more than that.',
   hold:15,
-  run(){ setTerm('R',1.6); setTerm('fp',1.0); setTerm('ne',0.4); } },
+  run(){ at('Middle', 10, 1.0, 2); } },
 
 { say:'The bottom four terms are different. Not one of them has ever been measured. '+
       'How often life starts on a suitable planet. How often life becomes intelligent. '+
       'How often intelligence broadcasts. And how long it keeps broadcasting.',
-  hold:18 },
+  hold:18 ,
+  run(){ at('Middle'); }},
 
 { say:'For the first of those we have exactly one data point, and the data point is us — '+
       'which tells us nothing, because we could only be asking the question on a planet '+
       'where it already happened. That is a textbook selection effect.',
-  hold:17 },
+  hold:17 ,
+  run(){ at('Middle'); }},
 
 { say:'So here is the optimistic case. Every one of these numbers has been seriously argued '+
       'for in print by somebody who thought hard about it.',
   hold:11,
-  at:[{t:6.0, do(){ setScenario('Optimistic'); }}] },
+  at:[{t:6.0, do(){ setScenario('Optimistic'); }}] ,
+  run(){ at('Middle'); }},
 
 { say:'Millions of civilisations, the nearest one close enough that a message could go there '+
       'and back inside a human lifetime. The galaxy is crowded.',
-  hold:12 },
+  hold:12 ,
+  run(){ at('Optimistic'); }},
 
 { say:'And now the Rare Earth case. Also argued for in print, also by serious people.',
   hold:8,
-  at:[{t:4.5, do(){ setScenario('Rare Earth'); }}] },
+  at:[{t:4.5, do(){ setScenario('Rare Earth'); }}] ,
+  run(){ at('Optimistic'); }},
 
 { say:'Nobody. Not one other civilisation in the entire galaxy. We are alone.',
-  hold:8, cam:{pos:[0,210,180], target:[0,0,0], ms:3000} },
+  hold:8, cam:{pos:[0,210,180], target:[0,0,0], ms:3000} ,
+  run(){ at('Rare Earth'); }},
 
 { say:'Nothing measured changed between those two answers. The three terms we actually know '+
       'stayed exactly where they were. Four numbers that nobody can measure moved, '+
-      'and the answer swung by fourteen orders of magnitude.',
-  hold:18 },
+      'and the answer swung by about twenty five orders of magnitude.',
+  hold:18 ,
+  run(){ at('Rare Earth'); }},
 
 { say:'That is the honest finding, and it is more useful than a number would be. '+
       'The Drake equation does not tell us whether we are alone. '+
       'It tells us precisely which four things we would need to learn to find out.',
   hold:16,
-  run(){ setScenario('Middle'); } }
+  run(){ at('Rare Earth'); } }
 ]});
 </script>
