@@ -1,0 +1,27 @@
+{
+  "id": "exoplanets",
+  "title": "Finding Exoplanets",
+  "sub": "we find them by watching a star get very slightly dimmer",
+  "tier": "established",
+  "summary": "A planet crossing its star blocks a disc of it and the brightness drops by the ratio of the areas. Change the planet, the orbit and the star, and watch the dip move against what our instruments can actually detect.",
+  "sources": [
+    { "claim": "Transit method and the first measured transit", "cite": "Charbonneau, Brown, Latham & Mayor 2000, ApJ 529, L45" },
+    { "claim": "Depth = (R_p/R_star)^2, limb darkening u ~ 0.6 in the visible", "cite": "Mandel & Agol 2002, ApJ 580, L171" },
+    { "claim": "Kepler photometric precision ~20 ppm for bright quiet stars", "cite": "Koch et al. 2010, ApJ 713, L79" },
+    { "claim": "TESS photometric precision ~60 ppm", "cite": "Ricker et al. 2015, JATIS 1, 014003" },
+    { "claim": "JWST transit precision ~10 ppm per transit", "cite": "Greene et al. 2016, ApJ 817, 17" },
+    { "claim": "Conservative habitable zone, 0.95-1.37 sqrt(L) AU", "cite": "Kopparapu et al. 2013, ApJ 765, 131" },
+    { "claim": "TRAPPIST-1 system parameters", "cite": "Gillon et al. 2017, Nature 542, 456" },
+    { "claim": "Kepler's third law P^2 = a^3 / M_star", "cite": "Kepler 1619, Harmonices Mundi, book V" },
+    { "claim": "Equilibrium temperature with albedo 0.3 gives 255 K for Earth", "cite": "standard result; the remaining 33 K is the greenhouse effect" }
+  ],
+  "open": [
+    "The planet in the 3D view is drawn far larger than scale. At true scale an Earth against the Sun is under one pixel; the depth readout carries the honest number and the picture is a diagram.",
+    "Orbit radius is compressed logarithmically so a 0.05 AU and a 5 AU orbit can share one scene.",
+    "Limb darkening uses a single linear coefficient. Real fits use quadratic or non-linear laws and the coefficient depends on wavelength and stellar type.",
+    "Orbits are treated as circular. Eccentricity changes transit duration and the probability of transiting at all.",
+    "The instrument floors are order-of-magnitude figures for a bright, quiet star. Real detectability also depends on stellar variability, observing cadence and how many transits you can stack.",
+    "A transit gives radius only. Mass needs radial velocity, and without mass you cannot distinguish a rocky planet from a low-density one.",
+    "The habitable zone shown is the conservative one and assumes an Earth-like atmosphere. It is a rough guide to where liquid water could be stable, not a statement about habitability."
+  ]
+}

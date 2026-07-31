@@ -1,0 +1,476 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Finding Exoplanets — Afterglow</title>
+<link rel="icon" type="image/svg+xml" href="../../engine/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../engine/style.css">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <a class="back" href="../../index.html">← All topics</a>
+      <h1>Finding Exoplanets</h1>
+      <span class="tier tier-established">Established</span>
+      <span class="sub">we find them by watching a star get very slightly dimmer</span>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="gl"></canvas>
+      <div id="inspector">
+        <div class="bar" id="insBar">
+          <span class="grip">⠿</span><span id="insTitle">The light curve</span>
+          <span class="sp"></span>
+          <button class="ib" id="insReset" title="Snap back">⤢</button>
+          <button class="ib" id="insMin" title="Collapse">▾</button>
+        </div>
+        <canvas id="inset"></canvas>
+      </div>
+      <div id="caption"></div>
+    </div>
+    <div id="divider"></div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script type="module">
+import { THREE, boot, ui, Plot, PAL, el, fmt, sci, starTexture, deepField, tween }
+  from '../../engine/engine.js';
+import { tour } from '../../engine/tour.js';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHYSICS
+   The transit method is almost embarrassingly simple geometry. A planet crosses
+   its star and blocks a disc of it, so the brightness drops by the ratio of the
+   areas. Everything else on this page follows from that one line plus Kepler.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const RSUN = 696340, REARTH = 6371, RJUP = 69911;   // km
+const AU_KM = 1.495979e8;
+const MSUN_T = 5772;                                 // K
+
+/* Depth = (R_p / R_*)². This is the whole method. */
+const depth = (rpEarth, rsSun) => Math.pow((rpEarth*REARTH)/(rsSun*RSUN), 2);
+
+/* Kepler's third law with the star's mass: P² = a³ / M_*  (years, AU, M☉) */
+const periodYr = (aAU, mSun) => Math.sqrt(aAU*aAU*aAU/mSun);
+
+/* Duration of a central transit. The planet crosses a chord of length 2(R_*+R_p)
+   at its orbital speed, which for a circular orbit is 2πa/P. */
+function durationHr(aAU, mSun, rsSun, rpEarth){
+  const P = periodYr(aAU, mSun)*8766;                        // hours
+  const chord = 2*(rsSun*RSUN + rpEarth*REARTH);             // km
+  const circ  = 2*Math.PI*aAU*AU_KM;
+  return P*chord/circ;
+}
+/* Geometric probability the orbit is tilted enough to transit at all. */
+const transitProb = (aAU, rsSun, rpEarth) =>
+  (rsSun*RSUN + rpEarth*REARTH)/(aAU*AU_KM);
+
+/* Stefan–Boltzmann, normalised to the Sun. */
+const lumSun = (rsSun, teff) => rsSun*rsSun*Math.pow(teff/MSUN_T, 4);
+
+/* Conservative habitable zone — Kopparapu et al. 2013, runaway greenhouse to
+   maximum greenhouse, scaled by √L. */
+const hzInner = L => 0.95*Math.sqrt(L);
+const hzOuter = L => 1.37*Math.sqrt(L);
+
+/* Equilibrium temperature at a, for Earth-like albedo 0.3, no greenhouse. */
+const teq = (L, aAU) => 278.6*Math.pow(L,0.25)/Math.sqrt(aAU)*Math.pow(1-0.3,0.25);
+
+/* What each instrument can actually see, as a photometric precision floor.
+   These are order-of-magnitude figures for a bright, quiet star. */
+const FLOORS = [
+  {name:'Ground-based',      ppm:1000, cite:'atmospheric scintillation dominates'},
+  {name:'TESS',              ppm:60,   cite:'Ricker et al. 2015'},
+  {name:'Kepler',            ppm:20,   cite:'Koch et al. 2010'},
+  {name:'JWST (one transit)',ppm:10,   cite:'Greene et al. 2016'}
+];
+
+const PRESETS = {
+  'Earth / Sun':    {rp:1,     a:1.0,   rs:1.0, ms:1.0,  teff:5772},
+  'Jupiter / Sun':  {rp:11.21, a:5.2,   rs:1.0, ms:1.0,  teff:5772},
+  'Hot Jupiter':    {rp:11.21, a:0.05,  rs:1.0, ms:1.0,  teff:5772},
+  'TRAPPIST-1 e':   {rp:0.92,  a:0.029, rs:0.12,ms:0.09, teff:2566}
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCENE — viewed almost edge-on, because that is the only geometry that
+   produces a transit at all.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const app = boot({
+  cameraPos:new THREE.Vector3(0,7,52), target:new THREE.Vector3(0,0,0),
+  dist:[16,320], near:0.1, far:3000, exposure:0.86,
+  bloom:{strength:0.5, radius:0.62, threshold:0.30}
+});
+const {scene} = app;
+deepField(scene, 800, 1300, 2.2);
+
+/* Limb-darkened star. The darkening is why a real transit floor is curved
+   rather than flat, so it is worth having on screen. */
+const starUni = {uColor:{value:new THREE.Color(1,1,1)}};
+const starMat = new THREE.ShaderMaterial({
+  uniforms:starUni,
+  vertexShader:`varying vec3 vN;
+    void main(){ vN=normalize(normalMatrix*normal);
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+  fragmentShader:`uniform vec3 uColor; varying vec3 vN;
+    void main(){
+      float mu = clamp(dot(vN, vec3(0.0,0.0,1.0)), 0.0, 1.0);
+      float limb = 1.0 - 0.6*(1.0-mu);                 // u ≈ 0.6, solar, visible
+      gl_FragColor = vec4(uColor*limb*1.3, 1.0);
+    }`
+});
+const star = new THREE.Mesh(new THREE.SphereGeometry(1,64,48), starMat);
+scene.add(star);
+
+const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map:starTexture(true), transparent:true, blending:THREE.AdditiveBlending,
+  depthWrite:false, opacity:0.85}));
+scene.add(glow);
+
+const planet = new THREE.Mesh(new THREE.SphereGeometry(1,32,24),
+  new THREE.MeshBasicMaterial({color:0x14140F}));
+scene.add(planet);
+
+/* Orbit path, and the habitable zone drawn as two rings. */
+function ring(color, op){
+  const p=[]; for(let i=0;i<=220;i++){const t=i/220*6.2832;
+    p.push(new THREE.Vector3(Math.cos(t),0,Math.sin(t)));}
+  const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),
+    new THREE.LineBasicMaterial({color, transparent:true, opacity:op}));
+  scene.add(l); return l;
+}
+const orbitRing = ring(0x8FA6C4, 0.34);
+const hzIn  = ring(0x6E8B63, 0.42);
+const hzOut = ring(0x6E8B63, 0.42);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+const P = {rp:1, a:1.0, rs:1.0, ms:1.0, teff:5772, phase:0.5, play:true, floor:'Kepler'};
+
+const sRp = ui.slider({label:'Planet radius  R_p', min:0.3, max:15, value:P.rp, log:true,
+  unit:'R⊕', fmt:v=>v<1?v.toFixed(2):v.toFixed(1), on:v=>{P.rp=v; update();}});
+const sA  = ui.slider({label:'Orbit radius  a', min:0.01, max:6, value:P.a, log:true,
+  unit:'AU', fmt:v=>v<0.1?v.toFixed(3):v.toFixed(2), on:v=>{P.a=v; update();}});
+const sRs = ui.slider({label:'Star radius  R★', min:0.1, max:2.5, value:P.rs, step:0.01,
+  unit:'R☉', d:2, on:v=>{P.rs=v; update();}});
+const sT  = ui.slider({label:'Star temperature', min:2400, max:9000, step:50, value:P.teff,
+  unit:'K', d:0, on:v=>{P.teff=v; update();}});
+
+const playBtn = ui.button('❚❚  Pause the orbit', ()=>{
+  P.play=!P.play; playBtn.textContent = P.play?'❚❚  Pause the orbit':'▶  Run the orbit';
+});
+
+const ro = ui.readout([
+  {id:'depth', k:'how much the star dims', cls:'big',
+   tip:'(R_p / R★)². The entire transit method is this one ratio.'},
+  {id:'pct',   k:'…as a percentage'},
+  {id:'period',k:'year on this planet'},
+  {id:'dur',   k:'transit lasts'},
+  {id:'prob',  k:'chance the orbit even lines up', cls:'hi',
+   tip:'A transit only happens if we happen to view the orbit nearly edge-on. Most planets never transit from where we sit.'},
+  {id:'see',   k:'detectable with', },
+  {id:'hz',    k:'habitable zone'},
+  {id:'teq',   k:'equilibrium temperature',
+   tip:'No atmosphere assumed, albedo 0.3. Earth comes out at 255 K this way — the greenhouse effect supplies the rest.'},
+  {id:'inhz',  k:'is it in the zone?'}
+]);
+
+const panel = el('div');
+panel.appendChild(ui.section('The whole method',
+  ui.eq('ΔF / F = (R_p / R★)²   <span class="c">blocked area ÷ stellar disc</span>'),
+  ui.eq('P² = a³ / M★   <span class="c">Kepler, in years / AU / M☉</span>'),
+  ui.note('A planet passes in front of its star and blocks a little of it. '+
+          '<b>That is the entire detection.</b> No image of the planet is ever taken — '+
+          'we only ever see the star get slightly fainter, on schedule.')));
+
+panel.appendChild(ui.section('The planet', sRp.node, sA.node,
+  ui.btnRow(...Object.keys(PRESETS).map(k=>ui.button(k,()=>applyPreset(k))))));
+
+panel.appendChild(ui.section('The star', sRs.node, sT.node, ui.btnRow(playBtn)));
+
+panel.appendChild(ui.section('Readout', ro.node));
+
+panel.appendChild(ui.section('What we would be looking with',
+  ui.legend(FLOORS.map(f=>[f.ppm<=20?PAL.sage:f.ppm<=60?PAL.kraft:PAL.rust,
+                           f.name+' · '+f.ppm+' ppm'])),
+  ui.note('The dashed lines on the chart are how small a dip each instrument can '+
+          'actually pick out. <b>Set the planet to Earth and the star to the Sun</b> — '+
+          'the dip is 84 parts per million, which is why nobody found an Earth twin '+
+          'from the ground.')));
+
+panel.appendChild(ui.section('What this does not tell you',
+  ui.note('A transit gives you the planet\'s <b>size</b>, not its mass. Without a mass you '+
+          'cannot tell a rocky world from a puffball of gas — that needs the star\'s wobble '+
+          'measured separately, and for small planets it is often beyond reach.'),
+  ui.note('The probability row is the honest sting. Even a perfect instrument only ever sees '+
+          'the small fraction of systems tilted nearly edge-on to us. '+
+          'Everything else is invisible to this method entirely.')));
+
+panel.appendChild(ui.section('Sources', ui.ref(
+  '<b>Transit method:</b> Charbonneau et al. 2000, ApJ 529, L45 — the first one · '+
+  '<b>Kepler photometric precision:</b> Koch et al. 2010, ApJ 713, L79 · '+
+  '<b>TESS:</b> Ricker et al. 2015, JATIS 1, 014003 · '+
+  '<b>Habitable zone:</b> Kopparapu et al. 2013, ApJ 765, 131 · '+
+  '<b>TRAPPIST-1:</b> Gillon et al. 2017, Nature 542, 456 · '+
+  '<b>Occurrence rates:</b> Bryson et al. 2021, AJ 161, 36')));
+app.setPanel(panel);
+
+function applyPreset(k){
+  const p = PRESETS[k];
+  P.rp=p.rp; P.a=p.a; P.rs=p.rs; P.ms=p.ms; P.teff=p.teff;
+  sRp.set(p.rp); sA.set(p.a); sRs.set(p.rs); sT.set(p.teff);
+  update();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT CURVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* Flux as a function of orbital phase, with limb darkening applied across the
+   stellar disc so the floor of the transit is curved like a real one. */
+function fluxAt(ph){
+  const d = depth(P.rp, P.rs);
+  /* Sky-projected separation in stellar radii. Phase 0.5 is mid-transit. */
+  const x = (ph-0.5)*2*Math.PI*P.a*AU_KM/(P.rs*RSUN);
+  const s = Math.abs(x);
+  const rr = (P.rp*REARTH)/(P.rs*RSUN);
+  if(s >= 1+rr) return 1;
+  /* Limb darkening I(mu)/I(0) = 1 - u(1-mu), u = 0.6 */
+  const mu = Math.sqrt(Math.max(0, 1 - Math.min(1,s)*Math.min(1,s)));
+  const inten = (1 - 0.6*(1-mu))/(1 - 0.6*(1 - 2/3));
+  if(s <= 1-rr) return 1 - d*inten;
+  /* Ingress / egress — partial overlap, linearly feathered. */
+  const f = (1+rr-s)/(2*rr);
+  return 1 - d*inten*f;
+}
+
+function drawPlot(){
+  const d = depth(P.rp, P.rs);
+  const dppm = d*1e6;
+  const yLo = Math.min(1 - d*1.55, 1 - 40e-6);
+  const p = Plot({xmin:0.34, xmax:0.66, ymin:yLo, ymax:1.0004,
+    xfmt:v=>((v-0.5)*100).toFixed(0),
+    yfmt:v=>((1-v)*1e6).toFixed(0)});
+  p.frame('LIGHT CURVE — WHAT THE TELESCOPE ACTUALLY RECORDS',
+          'orbital phase  [% of a year either side of mid-transit]',
+          'dimming  [parts per million]',
+          [0.38,0.44,0.5,0.56,0.62],
+          [yLo, yLo+(1-yLo)*0.33, yLo+(1-yLo)*0.66, 1]);
+
+  /* Instrument floors — the point of the whole page is where the curve sits
+     relative to these. */
+  FLOORS.forEach(f=>{
+    const y = 1 - f.ppm/1e6;
+    if(y > yLo && y < 1.0004){
+      const c = f.ppm<=20?PAL.sage : f.ppm<=60?PAL.kraft : PAL.rust;
+      p.hline(y, c, [4,3]);
+      p.label(f.name, p.x0+7, p.ty(y)-4, c);
+    }
+  });
+
+  const pts=[];
+  for(let i=0;i<=420;i++){ const ph=0.34+(0.66-0.34)*i/420; pts.push([ph, fluxAt(ph)]); }
+  p.line(pts, PAL.clay, 2.2);
+  p.marker(P.phase>0.66||P.phase<0.34 ? 0.66 : P.phase, fluxAt(P.phase), PAL.ink, 4);
+
+  p.label(dppm>=1000 ? (dppm/1e4).toFixed(2)+'% dip' : dppm.toFixed(0)+' ppm dip',
+          p.x0+7, p.y1+16, PAL.clay);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UPDATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const SCENE_STAR = 3.4;          // scene units for a 1 R☉ star
+function bbRGB(T){
+  const t=Math.max(1000,Math.min(40000,T))/100, cl=v=>Math.max(0,Math.min(255,v));
+  const r=t<=66?255:329.698727446*Math.pow(t-60,-0.1332047592);
+  const g=t<=66?99.4708025861*Math.log(t)-161.1195681661:288.1221695283*Math.pow(t-60,-0.0755148492);
+  const b=t>=66?255:(t<=19?0:138.5177312231*Math.log(t-10)-305.0447927307);
+  return [cl(r)/255,cl(g)/255,cl(b)/255];
+}
+
+function update(){
+  const d    = depth(P.rp, P.rs);
+  const per  = periodYr(P.a, P.ms);
+  const dur  = durationHr(P.a, P.ms, P.rs, P.rp);
+  const prob = transitProb(P.a, P.rs, P.rp);
+  const L    = lumSun(P.rs, P.teff);
+  const hi   = hzInner(L), ho = hzOuter(L);
+  const T    = teq(L, P.a);
+
+  /* ---- 3D ---- */
+  const rgb = bbRGB(P.teff);
+  starUni.uColor.value.setRGB(rgb[0],rgb[1],rgb[2]);
+  const sr = SCENE_STAR*P.rs;
+  star.scale.setScalar(sr);
+  glow.scale.setScalar(sr*3.4);
+  glow.material.color.setRGB(rgb[0],rgb[1],rgb[2]);
+
+  /* Orbit radius is compressed logarithmically. A hot Jupiter at 0.05 AU and a
+     cold one at 5 AU cannot share a linear scene without one of them being a
+     single pixel or the other being off-screen. */
+  const orbitScene = sr*2.2 + 7*Math.log10(1 + P.a/0.02);
+  orbitRing.scale.set(orbitScene,1,orbitScene);
+  const hzS = a => sr*2.2 + 7*Math.log10(1 + a/0.02);
+  hzIn.scale.set(hzS(hi),1,hzS(hi));
+  hzOut.scale.set(hzS(ho),1,hzS(ho));
+
+  /* Planet radius in scene units, exaggerated so it is visible at all — the real
+     ratio for Earth is 1/109 and would be sub-pixel. The DEPTH readout is the
+     honest number; the picture is a diagram. */
+  const pr = Math.max(0.8, sr*Math.sqrt((P.rp*REARTH)/(P.rs*RSUN))*1.1);
+  planet.scale.setScalar(pr);
+
+  const ang = P.phase*2*Math.PI - Math.PI/2;
+  planet.position.set(orbitScene*Math.sin(ang), 0, orbitScene*Math.cos(ang));
+
+  /* ---- readout ---- */
+  const dppm = d*1e6;
+  ro.set('depth', dppm>=1e4 ? (dppm/1e4).toFixed(2)+' %' : dppm.toFixed(0)+' ppm');
+  ro.set('pct',   (d*100).toPrecision(3)+' %');
+  ro.set('period', per<1/365.25*2 ? fmt(per*8766,1)+' hours'
+                 : per<1 ? fmt(per*365.25,1)+' days' : fmt(per,2)+' years');
+  ro.set('dur',   dur<1 ? fmt(dur*60,0)+' min' : fmt(dur,1)+' hours');
+  ro.set('prob',  (prob*100).toPrecision(2)+' %');
+
+  const best = FLOORS.filter(f=>dppm >= f.ppm).sort((a,b)=>b.ppm-a.ppm)[0];
+  ro.set('see', best ? best.name : '<span class="warn">nothing we have</span>');
+  ro.set('hz',  fmt(hi,3)+' – '+fmt(ho,3)+' AU');
+  ro.set('teq', fmt(T,0)+' K');
+  const inHz = P.a>=hi && P.a<=ho;
+  ro.set('inhz', inHz ? '<span class="good">yes</span>'
+                      : (P.a<hi ? '<span class="warn">too close, too hot</span>'
+                                : '<span class="warn">too far, too cold</span>'));
+
+  app.setCaption(
+    `The star dims by <b>${dppm>=1e4? (dppm/1e4).toFixed(2)+'%' : dppm.toFixed(0)+' parts per million'}</b> `+
+    `for ${dur<1? fmt(dur*60,0)+' minutes' : fmt(dur,1)+' hours'}, once every `+
+    `${per<1? fmt(per*365.25,1)+' days' : fmt(per,2)+' years'}. `+
+    (best ? `${best.name} could see that.` : `<b>Nothing we have built could see that.</b>`)+
+    ` <span class="cite">ΔF/F = (R_p/R★)² — Charbonneau et al. 2000.</span>`);
+
+  drawPlot();
+}
+
+app.onFrame(dt=>{
+  if(P.play){
+    /* Slow near mid-transit so the event itself is watchable, fast elsewhere —
+       otherwise a 5 AU orbit is a screensaver and the transit is a flicker. */
+    const near = Math.exp(-Math.pow((P.phase-0.5)/0.06, 2));
+    P.phase = (P.phase + dt*(0.16 - 0.13*near)) % 1;
+    update();
+  }
+});
+app.onThemeChange(update);
+update();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GUIDED TOUR
+   ═══════════════════════════════════════════════════════════════════════════ */
+const glideRp = (v, ms=1800) => tween('rp', P.rp, v, ms, x=>{P.rp=x; sRp.set(x); update();}, {log:true});
+const glideA  = (v, ms=2000) => tween('a',  P.a,  v, ms, x=>{P.a=x;  sA.set(x);  update();}, {log:true});
+const glideRs = (v, ms=1800) => tween('rs', P.rs, v, ms, x=>{P.rs=x; sRs.set(x); update();}, {log:true});
+
+const at = (rp, a, rs, ms, teff) => {
+  P.ms = ms; P.teff = teff; sT.set(teff);
+  glideRp(rp); glideA(a); glideRs(rs);
+};
+
+tour(app, {beats:[
+{ say:'We have found nearly six thousand planets around other stars. '+
+      'Almost none of them have ever been photographed. Here is how we actually find them.',
+  hold:13, cam:{pos:[0,7,52], target:[0,0,0], ms:1800},
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); } },
+
+{ say:'This is a star, and a planet going round it. Watch the chart on the left, '+
+      'and watch what happens when the planet crosses in front.',
+  hold:12,
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); } },
+
+{ say:'That dip is the entire method. The planet blocks a small disc of the star, '+
+      'so the brightness drops by the ratio of the two areas. '+
+      'Nothing else is measured. We never see the planet at all — only the star, '+
+      'getting very slightly fainter, exactly on schedule.',
+  hold:19,
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); } },
+
+{ say:'Now look at how small that dip actually is. This is the Earth crossing the Sun, '+
+      'seen from far away. The star dims by eighty four parts per million. '+
+      'That is under one hundredth of one percent.',
+  hold:16, cam:{pos:[0,4,34], target:[0,0,0], ms:2600},
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); } },
+
+{ say:'The dashed lines are what our instruments can actually pick out. '+
+      'From the ground, through the atmosphere, you can barely do a tenth of a percent. '+
+      'An Earth is more than ten times smaller than that. This is why nobody found one '+
+      'until we put a telescope in space.',
+  hold:19,
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); } },
+
+{ say:'Now watch a Jupiter instead.',
+  hold:5,
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); },
+  at:[{t:2.5, do(){ glideRp(11.21, 2200); }}] },
+
+{ say:'Eleven times wider than Earth, so it blocks about a hundred and twenty times more area. '+
+      'A one percent dip. You could see that from a garden telescope, and in nineteen ninety '+
+      'nine that is very nearly what happened — the first transit ever measured was a '+
+      'hot Jupiter, from the ground.',
+  hold:20,
+  run(){ at(11.21, 1.0, 1.0, 1.0, 5772); } },
+
+{ say:'And that is why the first planets we found were nothing like ours. '+
+      'It was never that hot Jupiters are common. They are just the easiest thing to see, '+
+      'and for years they were nearly the only thing we could see.',
+  hold:16,
+  run(){ at(11.21, 0.05, 1.0, 1.0, 5772); } },
+
+{ say:'There is a second problem, and it is worse. Look at the row for whether the orbit '+
+      'even lines up.',
+  hold:9,
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); } },
+
+{ say:'A transit only happens if we are looking at the orbit almost perfectly edge-on. '+
+      'For an Earth around a Sun, that is a zero point five percent chance. '+
+      'Ninety nine times out of two hundred, the planet is there and simply never '+
+      'crosses in front from where we are sitting. It is invisible to this method.',
+  hold:21, cam:{pos:[0,16,60], target:[0,0,0], ms:3000},
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); } },
+
+{ say:'So how do you find a small planet? You stop looking at stars like ours. '+
+      'I am shrinking this star down to a red dwarf — barely more than a tenth of '+
+      'the Sun\'s width.',
+  hold:14,
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); },
+  at:[{t:7.5, do(){ glideRs(0.12, 2800); glideA(0.029, 2800); }}] },
+
+{ say:'The planet did not change. The star did. A smaller star means the same planet '+
+      'covers far more of it, and the dip jumps by a factor of nearly seventy. '+
+      'The planet also has to orbit much closer to stay warm, which makes its year '+
+      'a few days long — so you can watch it transit again and again in a single week.',
+  hold:22,
+  run(){ at(0.92, 0.029, 0.12, 0.09, 2566); } },
+
+{ say:'This is the TRAPPIST-1 system, and it is why almost everything we know about '+
+      'small rocky planets comes from red dwarfs. Not because that is where planets are. '+
+      'Because that is where we can see them.',
+  hold:16,
+  run(){ at(0.92, 0.029, 0.12, 0.09, 2566); } },
+
+{ say:'One last honest point. A transit tells you how big a planet is. '+
+      'It tells you nothing at all about what it is made of, or whether anything '+
+      'is on it. The green rings are just where liquid water could sit. '+
+      'Everything past that is still guesswork. The sliders are yours.',
+  hold:20,
+  run(){ at(1, 1.0, 1.0, 1.0, 5772); } }
+]});
+</script>

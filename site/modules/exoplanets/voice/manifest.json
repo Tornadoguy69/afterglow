@@ -1,0 +1,86 @@
+[
+ {
+  "i": 0,
+  "file": "voice/beat-01.mp3",
+  "dur": 8.74,
+  "text": "We have found nearly six thousand planets around other stars. Almost none of them have ever been photographed. Here is how we actually find them."
+ },
+ {
+  "i": 1,
+  "file": "voice/beat-02.mp3",
+  "dur": 8.26,
+  "text": "This is a star, and a planet going round it. Watch the chart on the left, and watch what happens when the planet crosses in front."
+ },
+ {
+  "i": 2,
+  "file": "voice/beat-03.mp3",
+  "dur": 16.61,
+  "text": "That dip is the entire method. The planet blocks a small disc of the star, so the brightness drops by the ratio of the two areas. Nothing else is measured. We never see the planet at all — only the star, getting very slightly fainter, exactly on schedule."
+ },
+ {
+  "i": 3,
+  "file": "voice/beat-04.mp3",
+  "dur": 12.72,
+  "text": "Now look at how small that dip actually is. This is the Earth crossing the Sun, seen from far away. The star dims by eighty four parts per million. That is under one hundredth of one percent."
+ },
+ {
+  "i": 4,
+  "file": "voice/beat-05.mp3",
+  "dur": 15.53,
+  "text": "The dashed lines are what our instruments can actually pick out. From the ground, through the atmosphere, you can barely do a tenth of a percent. An Earth is more than ten times smaller than that. This is why nobody found one until we put a telescope in space."
+ },
+ {
+  "i": 5,
+  "file": "voice/beat-06.mp3",
+  "dur": 2.16,
+  "text": "Now watch a Jupiter instead."
+ },
+ {
+  "i": 6,
+  "file": "voice/beat-07.mp3",
+  "dur": 17.45,
+  "text": "Eleven times wider than Earth, so it blocks about a hundred and twenty times more area. A one percent dip. You could see that from a garden telescope, and in nineteen ninety nine that is very nearly what happened — the first transit ever measured was a hot Jupiter, from the ground."
+ },
+ {
+  "i": 7,
+  "file": "voice/beat-08.mp3",
+  "dur": 12,
+  "text": "And that is why the first planets we found were nothing like ours. It was never that hot Jupiters are common. They are just the easiest thing to see, and for years they were nearly the only thing we could see."
+ },
+ {
+  "i": 8,
+  "file": "voice/beat-09.mp3",
+  "dur": 5.86,
+  "text": "There is a second problem, and it is worse. Look at the row for whether the orbit even lines up."
+ },
+ {
+  "i": 9,
+  "file": "voice/beat-10.mp3",
+  "dur": 18.41,
+  "text": "A transit only happens if we are looking at the orbit almost perfectly edge-on. For an Earth around a Sun, that is a zero point five percent chance. Ninety nine times out of two hundred, the planet is there and simply never crosses in front from where we are sitting. It is invisible to this method."
+ },
+ {
+  "i": 10,
+  "file": "voice/beat-11.mp3",
+  "dur": 10.66,
+  "text": "So how do you find a small planet? You stop looking at stars like ours. I am shrinking this star down to a red dwarf — barely more than a tenth of the Sun's width."
+ },
+ {
+  "i": 11,
+  "file": "voice/beat-12.mp3",
+  "dur": 19.7,
+  "text": "The planet did not change. The star did. A smaller star means the same planet covers far more of it, and the dip jumps by a factor of nearly seventy. The planet also has to orbit much closer to stay warm, which makes its year a few days long — so you can watch it transit again and again in a single week."
+ },
+ {
+  "i": 12,
+  "file": "voice/beat-13.mp3",
+  "dur": 12.74,
+  "text": "This is the TRAPPIST-1 system, and it is why almost everything we know about small rocky planets comes from red dwarfs. Not because that is where planets are. Because that is where we can see them."
+ },
+ {
+  "i": 13,
+  "file": "voice/beat-14.mp3",
+  "dur": 16.42,
+  "text": "One last honest point. A transit tells you how big a planet is. It tells you nothing at all about what it is made of, or whether anything is on it. The green rings are just where liquid water could sit. Everything past that is still guesswork. The sliders are yours."
+ }
+]

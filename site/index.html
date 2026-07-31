@@ -86,6 +86,18 @@
   .topbar .navlink.pri{background:var(--clay);color:#FCFBF8;border-color:var(--clay)}
   .topbar .navlink.pri:hover{background:var(--clay-2);border-color:var(--clay-2);color:#fff}
 
+  /* Exoplanet card: the planet crosses the star and the light curve draws with it,
+     which is the whole idea of the page in one gesture. */
+  .fig-exo .exo-planet{fill:var(--ink);opacity:.85;transition:transform 1.5s var(--ease)}
+  .fig-exo .exo-curve{stroke-dasharray:120;stroke-dashoffset:120;transition:stroke-dashoffset 1.5s var(--ease)}
+  .fig-exo .exo-star{transition:opacity .5s var(--ease)}
+  a.card:hover .fig-exo .exo-planet,
+  a.card.inview .fig-exo .exo-planet{transform:translateX(36px)}
+  a.card:hover .fig-exo .exo-curve,
+  a.card.inview .fig-exo .exo-curve{stroke-dashoffset:0}
+  a.card:hover .fig-exo .exo-star,
+  a.card.inview .fig-exo .exo-star{opacity:.82}
+
   /* Inline badge key — the badges are met before their full legend. */
   .key-inline{
     display:flex;align-items:center;gap:8px;flex-wrap:wrap;
@@ -1037,6 +1049,31 @@
           </div>
         </div>
       </a>
+
+      <a class="card" data-tier="established" href="modules/exoplanets/index.html">
+        <div class="fig fig-exo" aria-hidden="true">
+          <svg viewBox="0 0 120 72">
+            <!-- star, and a planet that crosses it on hover / in view -->
+            <circle class="accent-fill exo-star" cx="34" cy="30" r="13"/>
+            <circle class="fill-soft" cx="34" cy="30" r="19" style="fill:var(--clay);opacity:.13"/>
+            <circle class="exo-planet" cx="16" cy="30" r="4"/>
+            <!-- the light curve it produces -->
+            <path class="stroke-soft" d="M62 58h50M62 58V20"/>
+            <path class="accent exo-curve" fill="none"
+                  d="M64 30h14l3 12h10l3-12h14"/>
+            <text class="note" x="66" y="18">brightness</text>
+          </svg>
+        </div>
+        <div class="card-body">
+          <span class="num">07</span>
+          <h3>Finding Exoplanets</h3>
+          <p>We have found thousands of planets and photographed almost none of them. Watch a star dim by 0.008% — and see why that took a space telescope.</p>
+          <div class="foot">
+            <span class="tier tier-established">Established</span>
+            <span class="go">Open →</span>
+          </div>
+        </div>
+      </a>
     </div>
   </section>
 
@@ -1064,7 +1101,7 @@
           </svg>
         </div>
         <div class="card-body">
-          <span class="num">07</span>
+          <span class="num">08</span>
           <h3>The Little Red Dots</h3>
           <p>Strange red objects the James Webb telescope found that no one expected. Scientists are still arguing over what they are.</p>
           <div class="foot">
@@ -1089,7 +1126,7 @@
           </svg>
         </div>
         <div class="card-body">
-          <span class="num">08</span>
+          <span class="num">09</span>
           <h3>Are We Alone?</h3>
           <p>We know a few of the numbers that go into “how many civilisations?” — and the rest can swing the answer wildly.</p>
           <div class="foot">
@@ -1118,7 +1155,7 @@
           </svg>
         </div>
         <div class="card-body">
-          <span class="num">09</span>
+          <span class="num">10</span>
           <h3>The Multiverse</h3>
           <p>Are there other universes? Several theories say yes — but so far, no experiment can tell us which (if any) is right.</p>
           <div class="foot">
